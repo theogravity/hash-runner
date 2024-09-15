@@ -2,8 +2,11 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import debugLib from "debug";
 import { glob } from "glob";
 import { type LilconfigResult, lilconfig } from "lilconfig";
+
+const debug = debugLib("hash-runner");
 
 export interface HashRunnerConfig {
   include?: string[];
@@ -23,7 +26,7 @@ function exitProcess(code: number): void {
 }
 
 async function runCommand(command: string, cwd: string): Promise<number> {
-  console.log(`Running command: "${command}"`);
+  debug(`Running command: "${command}"`);
 
   return new Promise((resolve, reject) => {
     const child = spawn(command, { cwd, shell: true, stdio: "inherit" });
@@ -79,7 +82,7 @@ async function loadConfig(specificConfigPath?: string): Promise<{ config: HashRu
   }
 
   if (!result || result.isEmpty) {
-    throw new Error("Config file not found or is empty");
+    throw new Error("[hash-runner] Config file not found or is empty");
   }
 
   return { config: result.config, configDir: path.dirname(result.filepath) };
@@ -103,7 +106,7 @@ export async function hashRunner(configPath?: string) {
   const hashFilePath = path.join(configDir, config.hashFile);
 
   if (CI) {
-    console.log("CI environment detected. Bypassing hash check.");
+    debug("CI environment detected. Bypassing hash check.");
     const code = await runCommand(config.execOnChange, configDir);
     exitProcess(code);
     return;
@@ -118,7 +121,7 @@ export async function hashRunner(configPath?: string) {
   const hasChanges = Object.keys(currentHashes).some((file) => currentHashes[file] !== previousHashes[file]);
 
   if (!hasChanges) {
-    console.log("No changes detected.");
+    debug(`No changes detected, skipping command execution: ${config.execOnChange}`);
     return;
   }
 

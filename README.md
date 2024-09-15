@@ -135,5 +135,13 @@ In addition to the CLI, `hash-runner` can also be used programmatically:
 import { hashRunner } from 'hash-runner';
 
 // Run hash runner with a custom configuration file
-await hashRunner('/path/to/config.yaml')
+await hashRunner('/path/to/config.json');
+```
+
+## Troubleshooting
+
+This library uses `debug` to log messages. To enable debug messages, set the `DEBUG` environment variable to `hash-runner`.
+
+```sh
+DEBUG=hash-runner hash-runner
 ```
