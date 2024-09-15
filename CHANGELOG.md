@@ -1,5 +1,11 @@
 # hash-runner
 
+## 1.1.0
+
+### Minor Changes
+
+- [`be44df9`](https://github.com/theogravity/hash-runner/commit/be44df95c1f052f78f85dc0f54a72ff572fa97cf) Thanks [@theogravity](https://github.com/theogravity)! - Add parallel processing to file hash comparison
+
 ## 1.0.3
 
 ### Patch Changes
