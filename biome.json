@@ -1,0 +1,43 @@
+{
+  "$schema": "https://biomejs.dev/schemas/1.6.3/schema.json",
+  "organizeImports": {
+    "enabled": true
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "lineWidth": 120,
+    "ignore": [
+      "vendor/*",
+      "node_modules/*",
+      "*.config.*",
+      "*.json",
+      "tsconfig.json",
+      ".turbo",
+      "build/*",
+      "coverage/*",
+      ".pnpm-store/*",
+      "dist/*"
+    ]
+  },
+  "linter": {
+    "enabled": true,
+    "ignore": ["build/*", "coverage/*"],
+    "rules": {
+      "style": {
+        "noNonNullAssertion": "off"
+      },
+      "performance": {
+        "noDelete": "off"
+      },
+      "complexity": {
+        "useLiteralKeys": "off"
+      },
+      "suspicious": {
+        "noImplicitAnyLet": "off",
+        "noExplicitAny": "off"
+      },
+      "recommended": true
+    }
+  }
+}

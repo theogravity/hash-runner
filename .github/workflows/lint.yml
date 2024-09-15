@@ -1,0 +1,27 @@
+name: Lint
+
+on:
+  pull_request:
+
+jobs:
+  lint:
+    name: Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: |
+            - recursive: true
+              args: [--frozen-lockfile]
+
+      - name: Build workspace packages
+        run: pnpm run build
+
+      - name: Run type checking
+        run: pnpm run typecheck
+
+      - name: Run linting
+        run: pnpm run lint

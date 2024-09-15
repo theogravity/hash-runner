@@ -1,0 +1,74 @@
+{
+  "name": "example-typescript-package",
+  "description": "",
+  "version": "0.2.2",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "author": "Theo Gravity <theo@suteki.nu>",
+  "keywords": [],
+  "scripts": {
+    "build": "tsup src/index.ts",
+    "changeset": "changeset",
+    "add-changeset": "changeset add",
+    "clean": "rm -rf node_modules dist",
+    "debug": "ts-node-dev --inspect -- src/index.ts",
+    "debug:break": "ts-node-dev --inspect-brk -- src/index.ts",
+    "lint": "biome check --write --unsafe src && biome format src --write && biome lint src --fix",
+    "lint-staged": "lint-staged",
+    "prepare": "husky",
+    "release": "changeset publish",
+    "syncpack:update": "syncpack update",
+    "syncpack:fix": "syncpack fix-mismatches",
+    "syncpack:format": "syncpack format",
+    "syncpack:lint": "syncpack lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "version-packages": "changeset version"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.8.3",
+    "@changesets/changelog-github": "0.5.0",
+    "@changesets/cli": "2.27.7",
+    "@commitlint/cli": "19.3.0",
+    "@commitlint/config-conventional": "19.2.2",
+    "@types/node": "22.1.0",
+    "husky": "9.1.4",
+    "lint-staged": "15.2.7",
+    "tsup": "8.2.4",
+    "syncpack": "12.4.0",
+    "turbo": "2.0.9",
+    "typescript": "5.5.4",
+    "vitest": "2.0.5"
+  },
+  "bugs": "https://github.com/theogravity/example-typescript-package/issues",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist"
+  ],
+  "homepage": "https://github.com/theogravity/example-typescript-package",
+  "license": "MIT",
+  "lint-staged": {
+    "**/*.{js,jsx,ts,tsx,html,css,json}": [
+      "pnpm run lint"
+    ],
+    "**/package.json": [
+      "pnpm run syncpack:format",
+      "pnpm run syncpack:lint"
+    ]
+  },
+  "packageManager": "pnpm@9.6.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": "git@github.com:theogravity/example-typescript-package.git"
+}
