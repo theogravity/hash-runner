@@ -98,6 +98,7 @@ async function getHashedFiles(configDir: string, config: HashRunnerConfig): Prom
     dot: true,
     absolute: true,
     ignore: excludePatterns,
+    nodir: true,
   });
 
   const fileHashes: Record<string, string> = {};
