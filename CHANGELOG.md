@@ -1,5 +1,11 @@
 # hash-runner
 
+## 1.1.1
+
+### Patch Changes
+
+- [`e53dbc2`](https://github.com/theogravity/hash-runner/commit/e53dbc2bf9893925dd680eab8cb073e4f1d91bf8) Thanks [@theogravity](https://github.com/theogravity)! - Fix issue where hash-runner dies when reading a directory
+
 ## 1.1.0
 
 ### Minor Changes
