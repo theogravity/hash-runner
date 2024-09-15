@@ -1,14 +1,14 @@
-import { exec } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { cosmiconfig } from "cosmiconfig";
 import { glob } from "glob";
+import { lilconfig } from "lilconfig";
 import { type Mock, type MockedFunction, beforeEach, describe, expect, it, vi } from "vitest";
 import { hashRunner } from "..";
 
-vi.mock("cosmiconfig", () => ({
-  cosmiconfig: vi.fn(() => ({
+vi.mock("lilconfig", () => ({
+  lilconfig: vi.fn(() => ({
     search: vi.fn(),
     load: vi.fn(),
   })),
@@ -19,11 +19,16 @@ vi.mock("child_process");
 vi.mock("glob");
 
 vi.mock("node:child_process", () => ({
-  exec: vi.fn(
-    (command: string, options: any, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
-      callback(null, "success", "");
-    },
-  ),
+  spawn: vi.fn((command: string, args: string[], options: any) => {
+    const mockProcess = {
+      on: (event: string, callback: (code: number) => void) => {
+        if (event === "close") {
+          callback(0); // simulate process exiting with code 0
+        }
+      },
+    };
+    return mockProcess as any;
+  }),
 }));
 
 const mockedReadFile = fs.readFile as MockedFunction<typeof fs.readFile>;
@@ -46,7 +51,7 @@ describe("hashRunner", () => {
       hashFile: ".hashes.json",
     };
 
-    (cosmiconfig as Mock).mockReturnValue({
+    (lilconfig as Mock).mockReturnValue({
       search: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
       load: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
     });
@@ -63,8 +68,9 @@ describe("hashRunner", () => {
 
     await hashRunner();
 
-    expect(exec).toHaveBeenCalledTimes(1);
-    expect(exec).toHaveBeenCalledWith(mockConfig.execOnChange, { cwd: mockConfigDir }, expect.any(Function));
+    expect(spawn).toHaveBeenCalledTimes(1);
+    expect(spawn).toHaveBeenCalledWith(mockConfig.execOnChange, { cwd: mockConfigDir, shell: true, stdio: "inherit" });
+
     expect(mockedWriteFile).toHaveBeenCalledWith(
       path.join(mockConfigDir, mockConfig.hashFile),
       JSON.stringify(currentHashes, null, 2),
@@ -79,7 +85,7 @@ describe("hashRunner", () => {
       hashFile: ".hashes.json",
     };
 
-    (cosmiconfig as Mock).mockReturnValue({
+    (lilconfig as Mock).mockReturnValue({
       search: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
       load: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
     });
@@ -96,7 +102,7 @@ describe("hashRunner", () => {
 
     await hashRunner();
 
-    expect(exec).not.toHaveBeenCalled();
+    expect(spawn).not.toHaveBeenCalled();
     expect(mockedWriteFile).not.toHaveBeenCalled();
   });
 
@@ -108,7 +114,7 @@ describe("hashRunner", () => {
       hashFile: ".hashes.json",
     };
 
-    (cosmiconfig as Mock).mockReturnValue({
+    (lilconfig as Mock).mockReturnValue({
       search: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
       load: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
     });
@@ -127,27 +133,19 @@ describe("hashRunner", () => {
 
       await hashRunner();
 
-      expect(exec).toHaveBeenCalledWith(mockConfig.execOnChange, { cwd: mockConfigDir }, expect.any(Function));
-      expect(exec).toHaveBeenCalledTimes(1); // Ensure it was called once
+      expect(spawn).toHaveBeenCalledWith(mockConfig.execOnChange, {
+        cwd: mockConfigDir,
+        shell: true,
+        stdio: "inherit",
+      });
+      expect(spawn).toHaveBeenCalledTimes(1);
     } finally {
       process.env.CI = originalCI;
     }
   });
 
   it("should throw an error if config file is not found or is empty", async () => {
-    const mockConfig = {
-      include: ["**/*.js"],
-      exclude: ["node_modules/**"],
-      execOnChange: 'echo "Files changed"',
-      hashFile: ".hashes.json",
-    };
-
-    (cosmiconfig as Mock).mockReturnValue({
-      search: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-      load: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-    });
-
-    (cosmiconfig as Mock).mockReturnValue({
+    (lilconfig as Mock).mockReturnValue({
       search: vi.fn(() => Promise.resolve(null)),
     });
 

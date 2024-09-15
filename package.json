@@ -1,6 +1,6 @@
 {
   "name": "hash-runner",
-  "description": "",
+  "description": "Executes a command when a change is detected in specified files. Not an active file watcher.",
   "version": "1.0.0",
   "main": "dist/cjs/index.js",
   "exports": {
@@ -10,8 +10,20 @@
     }
   },
   "author": "Theo Gravity <theo@suteki.nu>",
-  "keywords": [],
+  "keywords": [
+    "build",
+    "hash",
+    "runner",
+    "watch",
+    "turbo",
+    "execute",
+    "run",
+    "command",
+    "change",
+    "detect"
+  ],
   "scripts": {
+    "pre-build": "hash-runner",
     "build": "rm -rf dist && tsc -p tsconfig.cjs.json && tsc -p tsconfig.esm.json && ./post-build.sh",
     "changeset": "changeset",
     "add-changeset": "changeset add",
@@ -26,15 +38,15 @@
     "syncpack:fix": "syncpack fix-mismatches",
     "syncpack:format": "syncpack format",
     "syncpack:lint": "syncpack lint",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "IS_TEST=true vitest run",
+    "test:watch": "IS_TEST=true vitest",
     "typecheck": "tsc --noEmit",
     "version-packages": "changeset version"
   },
   "dependencies": {
     "commander": "12.1.0",
-    "cosmiconfig": "9.0.0",
-    "glob": "11.0.0"
+    "glob": "11.0.0",
+    "lilconfig": "3.1.2"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.0",

@@ -1,10 +1,9 @@
-import { exec } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import util from "node:util";
-import { type CosmiconfigResult, cosmiconfig } from "cosmiconfig";
 import { glob } from "glob";
+import { type LilconfigResult, lilconfig } from "lilconfig";
 
 export interface HashRunnerConfig {
   include?: string[];
@@ -14,10 +13,29 @@ export interface HashRunnerConfig {
 }
 
 const CI = process.env.CI === "true";
-const execPromise = util.promisify(exec);
 
-async function runCommand(command: string, cwd: string) {
-  await execPromise(command, { cwd });
+function exitProcess(code: number): void {
+  if (process.env.IS_TEST) {
+    return;
+  }
+
+  process.exit(code);
+}
+
+async function runCommand(command: string, cwd: string): Promise<number> {
+  console.log(`Running command: "${command}"`);
+
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, { cwd, shell: true, stdio: "inherit" });
+
+    child.on("close", (code) => {
+      resolve(code ?? 0);
+    });
+
+    child.on("error", (error) => {
+      reject(error);
+    });
+  });
 }
 
 async function computeFileHash(filePath: string): Promise<string> {
@@ -51,8 +69,8 @@ async function getHashedFiles(configDir: string, config: HashRunnerConfig): Prom
 }
 
 async function loadConfig(specificConfigPath?: string): Promise<{ config: HashRunnerConfig; configDir: string }> {
-  const explorer = cosmiconfig("hash-runner");
-  let result: CosmiconfigResult;
+  const explorer = lilconfig("hash-runner");
+  let result: LilconfigResult;
 
   if (specificConfigPath) {
     result = await explorer.load(specificConfigPath);
@@ -86,7 +104,8 @@ export async function hashRunner(configPath?: string) {
 
   if (CI) {
     console.log("CI environment detected. Bypassing hash check.");
-    await runCommand(config.execOnChange, configDir);
+    const code = await runCommand(config.execOnChange, configDir);
+    exitProcess(code);
     return;
   }
 
@@ -103,8 +122,10 @@ export async function hashRunner(configPath?: string) {
     return;
   }
 
-  await runCommand(config.execOnChange, configDir);
+  const code = await runCommand(config.execOnChange, configDir);
 
   // Update the hash file with the new hashes
   await writeHashFile(hashFilePath, currentHashes);
+
+  exitProcess(code);
 }

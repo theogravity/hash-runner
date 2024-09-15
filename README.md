@@ -8,19 +8,41 @@
 It calculates the SHA256 hash of the files and compares them to the previous hash values stored in a file. 
 If the hashes differ, the specified command is executed.
 
-## Features
+*This tool is not an active file watcher that constantly checks for changes.*
 
-- Detects changes in specified files using SHA256 hashing.
-- Executes a specified command when file changes are detected.
-- Supports custom configurations using a configuration file.
-- Can be easily integrated into CI environments.
+## Use-case
+
+It is designed to be used in conjunction with tools like [`turbo`](https://turbo.build/),
+where the watch mode may trigger unnecessary builds even when caching is used.
+
+For example, consider the following `turbo` configuration:
+
+```json
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "dev": {
+      "dependsOn": ["@internal/some-package#build"],
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
+```
+
+When running `turbo [watch] dev`, it will trigger a build even when no changes are detected in `@internal/some-package`.
+
+By using `hash-runner`, the `build` command will still run on `@internal/some-package`, but it won't actually
+execute the underlying build command unless changes are detected.
 
 ## Installation
+
+Node.js 20 or higher is required.
 
 To install `hash-runner`, use npm:
 
 ```sh
-npm install hash-runner
+npm install hash-runner --save-dev
 ```
 
 ## Usage
@@ -29,54 +51,29 @@ npm install hash-runner
 
 ### Configuration
 
-The configuration file should be in JSON or YAML format and can include the following properties:
+`hash-runner` uses [`lilconfig`](https://github.com/antonk52/lilconfig) to read configuration.
+
+`lilconfig` will check the current directory for the following:
+
+- a `hash-runner` property in `package.json`
+- a `.hash-runnerrc` file in JSON or YAML format
+- a `.hash-runnerrc.json`, `.hash-runnerrc.js`, `.hash-runnerrc.ts`, `.hash-runnerrc.mjs`, or `.hash-runnerrc.cjs` file
+- a `hash-runnerrc`, `hash-runnerrc.json`, `hash-runnerrc.js`, `hash-runnerrc.ts`, `hash-runnerrc.mjs`, or `hash-runnerrc.cjs` file inside a `.config` subdirectory
+- a `hash-runner.config.js`, `hash-runner.config.ts`, `hash-runner.config.mjs`, or `hash-runner.config.cjs` file
+
+#### Configuration options
 
 - `include`: An array of glob patterns specifying the files to include in the hash calculation.
 - `exclude`: An array of glob patterns specifying the files to exclude from the hash calculation.
   * `node_modules` is always excluded and does not need to be specified.
 - `execOnChange`: The command to execute when changes are detected.
+  * `hash-runner` will exit with the status code of the executed command after completion.
 - `hashFile`: The path to the file where hashes are stored.
+  * It is recommended you add the `hashFile` to your `.gitignore` file.
 
-Example configuration file (`.hash-runner.json`):
+#### Examples
 
-```json
-{
-  "include": ["src/**/*.ts"],
-  "exclude": ["dist/**"],
-  "execOnChange": "npm run build",
-  "hashFile": ".hashes.json"
-}
-```
-
-```js
-export default {
-  include: ['src/**/*.ts'],
-  exclude: ['dist/**'],
-  execOnChange: 'npm run build',
-  hashFile: '.hashes.json'
-};
-```
-
-By default, looks for a configuration file named:
-
-- `.hash-runner.json`
-- `.hash-runner.yaml`
-- `.hash-runner.js`
-
-#### Example
-
-Do not run `tsc` if the files in the `src` directory have not changed:
-
-`.hash-runner.json`:
-
-```json
-{
-  "include": ["src/**/*.ts"],
-  "exclude": ["dist/**"],
-  "execOnChange": "npm run build:files",
-  "hashFile": ".hashes.json"
-}
-```
+Run `tsc` when changes are detected in files in the `src` directory:
 
 `package.json`:
 
@@ -88,6 +85,30 @@ Do not run `tsc` if the files in the `src` directory have not changed:
   }
 }
 ```
+
+Example configuration file (`.hash-runnerrc.json`):
+
+```json
+{
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist/**"],
+  "execOnChange": "npm run build:files",
+  "hashFile": ".hashes.json"
+}
+```
+
+`hash-runner.config.js`:
+
+```js
+module.exports = {
+  include: ['src/**/*.ts'],
+  exclude: ['dist/**'],
+  execOnChange: 'npm run build:files',
+  hashFile: '.hashes.json'
+};
+```
+
+`npm run build` will only run `tsc` when changes are detected in files in the `src` directory.
 
 ### CI Mode
 
