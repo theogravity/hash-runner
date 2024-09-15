@@ -1,6 +1,6 @@
 # hash-runner
 
-[![NPM version](https://img.shields.io/npm/v/loglayer.svg?style=flat-square)](https://www.npmjs.com/package/hash-runner)
+[![NPM version](https://img.shields.io/npm/v/hash-runner.svg?style=flat-square)](https://www.npmjs.com/package/hash-runner)
 ![NPM Downloads](https://img.shields.io/npm/dm/hash-runner)
 [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-%230074c1.svg)](http://www.typescriptlang.org/)
 
