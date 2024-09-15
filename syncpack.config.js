@@ -1,6 +1,6 @@
 module.exports = {
   "semverRange": "exact",
-  "sortFirst": ["name", "description", "version", "type", "private", "main", "types", "exports", "author", "keywords", "scripts", "dependencies", "devDependencies", "peerDependencies", "resolutions"],
+  "sortFirst": ["name", "description", "version", "type", "private", "main", "exports", "types", "author", "keywords", "scripts", "dependencies", "devDependencies", "peerDependencies", "resolutions"],
   "sortAz": [],
   "semverGroups": [{
     "range": "",
@@ -13,5 +13,6 @@ module.exports = {
     "dependencies": ["$LOCAL"],
     "dependencyTypes": ["!local"],
     "pinVersion": "workspace:*"
-  }]
+  },
+  ]
 }

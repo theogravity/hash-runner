@@ -1,20 +1,18 @@
 {
-  "name": "example-typescript-package",
+  "name": "hash-runner",
   "description": "",
-  "version": "0.2.2",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "version": "1.0.0",
+  "main": "dist/cjs/index.js",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/esm/index.mjs",
+      "require": "./dist/cjs/index.js"
     }
   },
   "author": "Theo Gravity <theo@suteki.nu>",
   "keywords": [],
   "scripts": {
-    "build": "tsup src/index.ts",
+    "build": "rm -rf dist && tsc -p tsconfig.cjs.json && tsc -p tsconfig.esm.json && ./post-build.sh",
     "changeset": "changeset",
     "add-changeset": "changeset add",
     "clean": "rm -rf node_modules dist",
@@ -33,29 +31,36 @@
     "typecheck": "tsc --noEmit",
     "version-packages": "changeset version"
   },
-  "devDependencies": {
-    "@biomejs/biome": "1.8.3",
-    "@changesets/changelog-github": "0.5.0",
-    "@changesets/cli": "2.27.7",
-    "@commitlint/cli": "19.3.0",
-    "@commitlint/config-conventional": "19.2.2",
-    "@types/node": "22.1.0",
-    "husky": "9.1.4",
-    "lint-staged": "15.2.7",
-    "tsup": "8.2.4",
-    "syncpack": "12.4.0",
-    "turbo": "2.0.9",
-    "typescript": "5.5.4",
-    "vitest": "2.0.5"
+  "dependencies": {
+    "commander": "12.1.0",
+    "cosmiconfig": "9.0.0",
+    "glob": "11.0.0"
   },
-  "bugs": "https://github.com/theogravity/example-typescript-package/issues",
+  "devDependencies": {
+    "@biomejs/biome": "1.9.0",
+    "@changesets/changelog-github": "0.5.0",
+    "@changesets/cli": "2.27.8",
+    "@commitlint/cli": "19.5.0",
+    "@commitlint/config-conventional": "19.5.0",
+    "@types/node": "22.5.5",
+    "husky": "9.1.6",
+    "lint-staged": "15.2.10",
+    "syncpack": "13.0.0",
+    "turbo": "2.1.2",
+    "typescript": "5.6.2",
+    "vitest": "2.1.1"
+  },
+  "bin": {
+    "hash-runner": "dist/cjs/bin/hash-runner.js"
+  },
+  "bugs": "https://github.com/theogravity/hash-runner/issues",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "files": [
     "dist"
   ],
-  "homepage": "https://github.com/theogravity/example-typescript-package",
+  "homepage": "https://github.com/theogravity/hash-runner",
   "license": "MIT",
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx,html,css,json}": [
@@ -70,5 +75,5 @@
   "publishConfig": {
     "access": "public"
   },
-  "repository": "git@github.com:theogravity/example-typescript-package.git"
+  "repository": "git@github.com:theogravity/hash-runner.git"
 }
