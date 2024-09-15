@@ -1,7 +1,7 @@
 {
   "name": "hash-runner",
   "description": "Executes a command when a change is detected in specified files. Not an active file watcher.",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "main": "dist/cjs/index.js",
   "exports": {
     ".": {
