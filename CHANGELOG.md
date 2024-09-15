@@ -1,5 +1,11 @@
 # hash-runner
 
+## 1.0.3
+
+### Patch Changes
+
+- [`47feb13`](https://github.com/theogravity/hash-runner/commit/47feb137c8b1d5585b7e80bcff8eb949cc35ea2d) Thanks [@theogravity](https://github.com/theogravity)! - README.md badge fix
+
 ## 1.0.2
 
 ### Patch Changes
