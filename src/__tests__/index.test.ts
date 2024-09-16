@@ -96,7 +96,6 @@ describe("hashRunner", () => {
     };
 
     mockedReadFile.mockResolvedValueOnce(JSON.stringify(currentHashes));
-
     mockedGlob.mockResolvedValue(Object.keys(currentHashes).map((file) => path.join(mockConfigDir, file)) as any);
     mockedReadFile.mockResolvedValue(fileContent);
 
@@ -150,5 +149,155 @@ describe("hashRunner", () => {
     });
 
     await expect(hashRunner()).rejects.toThrow("Config file not found or is empty");
+  });
+
+  it("should run execOnChange and create the hash file if it does not exist", async () => {
+    const mockConfig = {
+      include: ["**/*.js"],
+      exclude: ["node_modules/**"],
+      execOnChange: 'echo "Files changed"',
+      hashFile: ".hashes.json",
+    };
+
+    (lilconfig as Mock).mockReturnValue({
+      search: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
+      load: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
+    });
+
+    const fileContent = "const a = 1;";
+    const currentHashes = {
+      "file.js": createHash("sha256").update(fileContent).digest("hex"),
+    };
+
+    mockedReadFile.mockRejectedValueOnce(new Error("File not found"));
+    mockedGlob.mockResolvedValue(Object.keys(currentHashes).map((file) => path.join(mockConfigDir, file)) as any);
+    mockedReadFile.mockResolvedValue(fileContent);
+
+    await hashRunner();
+
+    expect(spawn).toHaveBeenCalledTimes(1);
+    expect(spawn).toHaveBeenCalledWith(mockConfig.execOnChange, { cwd: mockConfigDir, shell: true, stdio: "inherit" });
+
+    expect(mockedWriteFile).toHaveBeenCalledWith(
+      path.join(mockConfigDir, mockConfig.hashFile),
+      JSON.stringify(currentHashes, null, 2),
+    );
+  });
+
+  it("should run execOnChange and update the hash file if hashes length mismatch", async () => {
+    const mockConfig = {
+      include: ["**/*.js"],
+      exclude: ["node_modules/**"],
+      execOnChange: 'echo "Files changed"',
+      hashFile: ".hashes.json",
+    };
+
+    (lilconfig as Mock).mockReturnValue({
+      search: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
+      load: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
+    });
+
+    const fileContent1 = "const a = 1;";
+    const fileContent2 = "const b = 2;";
+
+    const oldHashes = {
+      "file1.js": createHash("sha256").update(fileContent1).digest("hex"),
+    };
+    const currentHashes = {
+      "file1.js": createHash("sha256").update(fileContent1).digest("hex"),
+      "file2.js": createHash("sha256").update(fileContent2).digest("hex"),
+    };
+
+    mockedReadFile.mockResolvedValueOnce(JSON.stringify(oldHashes));
+    mockedGlob.mockResolvedValue(Object.keys(currentHashes).map((file) => path.join(mockConfigDir, file)) as any);
+    mockedReadFile.mockResolvedValueOnce(fileContent1).mockResolvedValueOnce(fileContent2);
+
+    await hashRunner();
+
+    expect(spawn).toHaveBeenCalledTimes(1);
+    expect(spawn).toHaveBeenCalledWith(mockConfig.execOnChange, { cwd: mockConfigDir, shell: true, stdio: "inherit" });
+
+    expect(mockedWriteFile).toHaveBeenCalledWith(
+      path.join(mockConfigDir, mockConfig.hashFile),
+      JSON.stringify(currentHashes, null, 2),
+    );
+  });
+
+  it("should run execOnChange and update the hash file if hashes mismatch using chunked comparisons", async () => {
+    const mockConfig = {
+      include: ["src/**/*.js"],
+      exclude: ["node_modules/**", "src/**/__tests__/**"],
+      execOnChange: 'echo "Files changed"',
+      hashFile: ".hashes.json",
+      parallelizeComparisonsChunkSize: 3,
+    };
+
+    // Mocking the config loader to return our mock config
+    (lilconfig as Mock).mockReturnValue({
+      search: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
+      load: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
+    });
+
+    // Creating sample file contents and hashes
+    const fileContents = Array.from({ length: 10 }, (_, i) => `const a${i} = ${i};`);
+    const oldHashes = Object.fromEntries(
+      fileContents.map((content, i) => [`file${i}.js`, createHash("sha256").update(`old${content}`).digest("hex")]),
+    );
+    const currentHashes = Object.fromEntries(
+      fileContents.map((content, i) => [`file${i}.js`, createHash("sha256").update(content).digest("hex")]),
+    );
+
+    // Mocking file reads
+    mockedReadFile.mockResolvedValueOnce(JSON.stringify(oldHashes));
+    mockedGlob.mockResolvedValue(fileContents.map((_, i) => path.join(mockConfigDir, `file${i}.js`)) as any);
+
+    for (const content of fileContents) {
+      mockedReadFile.mockResolvedValueOnce(content);
+    }
+
+    await hashRunner();
+
+    expect(spawn).toHaveBeenCalledTimes(1);
+    expect(spawn).toHaveBeenCalledWith(mockConfig.execOnChange, { cwd: mockConfigDir, shell: true, stdio: "inherit" });
+
+    expect(mockedWriteFile).toHaveBeenCalledWith(
+      path.join(mockConfigDir, mockConfig.hashFile),
+      JSON.stringify(currentHashes, null, 2),
+    );
+  });
+
+  it("should not run execOnChange if hashes match using chunked comparisons with chunk size 2", async () => {
+    const mockConfig = {
+      include: ["src/**/*.js"],
+      exclude: ["node_modules/**", "src/**/__tests__/**"],
+      execOnChange: 'echo "Files changed"',
+      hashFile: ".hashes.json",
+      parallelizeComparisonsChunkSize: 2,
+    };
+
+    // Mocking the config loader to return our mock config
+    (lilconfig as Mock).mockReturnValue({
+      search: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
+      load: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
+    });
+
+    // Creating sample file contents and hashes
+    const fileContents = Array.from({ length: 10 }, (_, i) => `const a${i} = ${i};`);
+    const currentHashes = Object.fromEntries(
+      fileContents.map((content, i) => [`file${i}.js`, createHash("sha256").update(content).digest("hex")]),
+    );
+
+    // Mocking file reads to return the current hashes
+    mockedReadFile.mockResolvedValueOnce(JSON.stringify(currentHashes));
+    mockedGlob.mockResolvedValue(fileContents.map((_, i) => path.join(mockConfigDir, `file${i}.js`)) as any);
+
+    for (const content of fileContents) {
+      mockedReadFile.mockResolvedValueOnce(content);
+    }
+
+    await hashRunner();
+
+    expect(spawn).not.toHaveBeenCalled();
+    expect(mockedWriteFile).not.toHaveBeenCalled();
   });
 });

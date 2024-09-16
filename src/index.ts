@@ -27,6 +27,11 @@ export interface HashRunnerConfig {
    * This should also be included in the `.gitignore` file.
    */
   hashFile: string;
+  /**
+   * Will start parallelizing the hash comparison per specified number of file entries.
+   * Default is 100 files, meaning that the hash comparison will be parallelized for every 100 files.
+   */
+  parallelizeComparisonsChunkSize?: number;
 }
 
 const CI = process.env.CI === "true";
@@ -77,6 +82,7 @@ async function runCommand(command: string, cwd: string): Promise<number> {
  * @returns {Promise<string>} - Resolves with the hash of the file.
  */
 async function computeFileHash(filePath: string): Promise<string> {
+  debug(`Computing hash for file: "${filePath}"`);
   const fileBuffer = await fs.readFile(filePath);
   const hashSum = createHash("sha256");
   hashSum.update(fileBuffer);
@@ -141,12 +147,12 @@ async function loadConfig(specificConfigPath?: string): Promise<{ config: HashRu
  * @param {string} hashFilePath - The path to the hash file.
  * @returns {Promise<Record<string, string>>} - Resolves with the hashes read from the file.
  */
-async function readHashFile(hashFilePath: string): Promise<Record<string, string>> {
+async function readHashFile(hashFilePath: string): Promise<Record<string, string> | null> {
   try {
     const content = await fs.readFile(hashFilePath, "utf8");
     return JSON.parse(content);
   } catch (e) {
-    return {};
+    return null;
   }
 }
 
@@ -186,6 +192,7 @@ async function checkChangesInChunks(
 
       const file = fileKeys[i];
       if (currentHashes[file] !== previousHashes[file]) {
+        debug(`Hash mismatch detected for file: "${file} (${currentHashes[file]} vs ${previousHashes[file]})"`);
         abortController.abort(); // Abort other operations if a change is detected
         return;
       }
@@ -212,6 +219,7 @@ async function checkChangesInChunks(
   );
 
   try {
+    debug(`Comparing hashes in ${numCursors} chunks of ${chunkSize} files each`);
     await Promise.all(promises);
   } catch (err: any) {
     if (err?.name !== "AbortError") {
@@ -242,18 +250,22 @@ export async function hashRunner(configPath?: string) {
     getHashedFiles(configDir, config),
   ]);
 
-  // Check if any files have changes using the chunked async check
-  const hasChanges = await checkChangesInChunks(currentHashes, previousHashes);
+  debug(`Previous hashes exist: ${!!previousHashes}`);
+  debug(
+    `Previous vs current hash length: ${Object.keys(previousHashes || {}).length} vs ${Object.keys(currentHashes).length}`,
+  );
 
-  if (!hasChanges) {
-    debug(`No changes detected, skipping command execution: ${config.execOnChange}`);
+  if (
+    !previousHashes ||
+    Object.keys(currentHashes).length !== Object.keys(previousHashes).length ||
+    (await checkChangesInChunks(currentHashes, previousHashes, config.parallelizeComparisonsChunkSize))
+  ) {
+    debug(`Hashes mismatch or hash file does not exist. Running command: "${config.execOnChange}"`);
+    const code = await runCommand(config.execOnChange, configDir);
+    await writeHashFile(hashFilePath, currentHashes);
+    exitProcess(code);
     return;
   }
 
-  const code = await runCommand(config.execOnChange, configDir);
-
-  // Update the hash file with the new hashes
-  await writeHashFile(hashFilePath, currentHashes);
-
-  exitProcess(code);
+  debug("No changes detected. Exiting.");
 }

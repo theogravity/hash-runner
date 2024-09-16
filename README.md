@@ -70,6 +70,8 @@ npm install hash-runner --save-dev
   * `hash-runner` will exit with the status code of the executed command after completion.
 - `hashFile`: The path to the file where hashes are stored.
   * It is recommended you add the `hashFile` to your `.gitignore` file.
+- `parallelizeComparisonsChunkSize`: Will start parallelizing the hash comparison per specified number of file entries.
+  * Default is 100 files, meaning that the hash comparison will be parallelized for every 100 files.
 
 #### Examples
 
