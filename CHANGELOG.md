@@ -1,5 +1,11 @@
 # hash-runner
 
+## 1.1.2
+
+### Patch Changes
+
+- [`4d97782`](https://github.com/theogravity/hash-runner/commit/4d977820af85e7abe619ae4c84a549ea4f59fa5e) Thanks [@theogravity](https://github.com/theogravity)! - Add parallelizeComparisonsChunkSize parameter, and some fixes.
+
 ## 1.1.1
 
 ### Patch Changes
