@@ -8,7 +8,7 @@ import { type LilconfigResult, lilconfig } from "lilconfig";
 
 const debug = debugLib("hash-runner");
 
-export interface HashRunnerConfig {
+export interface HashRunnerConfigFile {
   /**
    * An array of glob patterns to include files for hashing.
    */
@@ -32,6 +32,13 @@ export interface HashRunnerConfig {
    * Default is 100 files, meaning that the hash comparison will be parallelized for every 100 files.
    */
   parallelizeComparisonsChunkSize?: number;
+}
+
+export interface HashRunnerOptions {
+  /**
+   * Force hash-regeneration and execute.
+   */
+  force?: boolean;
 }
 
 const CI = process.env.CI === "true";
@@ -92,14 +99,14 @@ async function computeFileHash(filePath: string): Promise<string> {
 /**
  * Retrieves the hashes of the files that match the configuration patterns.
  * @param {string} configDir - The directory containing the configuration.
- * @param {HashRunnerConfig} config - The hash runner configuration.
+ * @param {HashRunnerConfigFile} config - The hash runner configuration.
  * @returns {Promise<Record<string, string>>} - Resolves with an object mapping file paths to their hashes.
  */
-async function getHashedFiles(configDir: string, config: HashRunnerConfig): Promise<Record<string, string>> {
+async function getHashedFiles(configDir: string, config: HashRunnerConfigFile): Promise<Record<string, string>> {
   const includePatterns = config.include || [];
   const excludePatterns = [...(config.exclude || []), "node_modules/**"];
 
-  const includedFiles = await glob(includePatterns.join("|"), {
+  const includedFiles = await glob(includePatterns, {
     cwd: configDir,
     dot: true,
     absolute: true,
@@ -123,9 +130,9 @@ async function getHashedFiles(configDir: string, config: HashRunnerConfig): Prom
 /**
  * Loads the hash runner configuration.
  * @param {string} [specificConfigPath] - Specific path to the configuration file.
- * @returns {Promise<{ config: HashRunnerConfig; configDir: string }>} - Resolves with the configuration and its directory.
+ * @returns {Promise<{ config: HashRunnerConfigFile; configDir: string }>} - Resolves with the configuration and its directory.
  */
-async function loadConfig(specificConfigPath?: string): Promise<{ config: HashRunnerConfig; configDir: string }> {
+async function loadConfig(specificConfigPath?: string): Promise<{ config: HashRunnerConfigFile; configDir: string }> {
   const explorer = lilconfig("hash-runner");
   let result: LilconfigResult;
 
@@ -233,8 +240,9 @@ async function checkChangesInChunks(
 /**
  * Main function to run the hash runner process.
  * @param {string} [configPath] - Specific path to the configuration file.
+ * @param {HashRunnerOptions} [options={}] - Additional options.
  */
-export async function hashRunner(configPath?: string) {
+export async function hashRunner(configPath?: string, options: HashRunnerOptions = {}) {
   const { config, configDir } = await loadConfig(configPath);
   const hashFilePath = path.join(configDir, config.hashFile);
 
@@ -250,12 +258,14 @@ export async function hashRunner(configPath?: string) {
     getHashedFiles(configDir, config),
   ]);
 
+  debug(`Forced hash regeneration: ${!!options.force}`);
   debug(`Previous hashes exist: ${!!previousHashes}`);
   debug(
     `Previous vs current hash length: ${Object.keys(previousHashes || {}).length} vs ${Object.keys(currentHashes).length}`,
   );
 
   if (
+    options.force ||
     !previousHashes ||
     Object.keys(currentHashes).length !== Object.keys(previousHashes).length ||
     (await checkChangesInChunks(currentHashes, previousHashes, config.parallelizeComparisonsChunkSize))

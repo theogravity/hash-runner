@@ -47,7 +47,12 @@ npm install hash-runner --save-dev
 
 ## Usage
 
-`hash-runner [--config <config-file>]`
+`hash-runner [--config <config-file>] [--force]`
+
+CLI options:
+
+* `-c / --config <config-file>`: Specify a custom configuration file.
+* `-f / --force`: Force the creation of a new hash file and execute.
 
 ### Configuration
 
