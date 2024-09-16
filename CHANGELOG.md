@@ -1,5 +1,11 @@
 # hash-runner
 
+## 1.1.3
+
+### Patch Changes
+
+- [`b01793f`](https://github.com/theogravity/hash-runner/commit/b01793f7a2b10cc727992f1da24be0974faf747b) Thanks [@theogravity](https://github.com/theogravity)! - Fix usage with multiple file includes, add a `--force` flag option
+
 ## 1.1.2
 
 ### Patch Changes
