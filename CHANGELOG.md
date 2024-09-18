@@ -1,5 +1,12 @@
 # hash-runner
 
+## 2.0.0
+
+### Major Changes
+
+- [`9d069ea`](https://github.com/theogravity/hash-runner/commit/9d069ead26b6b4596d8ad0ac56c33988ed087db8) Thanks [@theogravity](https://github.com/theogravity)! - - _Breaking_: Convert hash-runner to be implemented as a class instead. See API documentation for updated usage.
+  - CLI usage has not changed.
+
 ## 1.1.3
 
 ### Patch Changes
