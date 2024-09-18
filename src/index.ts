@@ -72,8 +72,6 @@ export class HashRunner {
    * @private
    */
   private async runCommand(command: string, cwd: string): Promise<number> {
-    this.log(`Running command: "${command}"`);
-
     return new Promise((resolve, reject) => {
       const child = spawn(command, { cwd, shell: true, stdio: "inherit" });
 
