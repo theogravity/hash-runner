@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { glob } from "glob";
 import { lilconfig } from "lilconfig";
 import { type Mock, type MockedFunction, beforeEach, describe, expect, it, vi } from "vitest";
-import { hashRunner } from "..";
+import { HashRunner } from "../index";
 
 vi.mock("lilconfig", () => ({
   lilconfig: vi.fn(() => ({
@@ -35,26 +35,35 @@ const mockedReadFile = fs.readFile as MockedFunction<typeof fs.readFile>;
 const mockedWriteFile = fs.writeFile as MockedFunction<typeof fs.writeFile>;
 const mockedGlob = glob as MockedFunction<typeof glob>;
 
-describe("hashRunner", () => {
+describe("HashRunner", () => {
   const mockConfigPath = path.resolve(__dirname, "..", ".hash-runner.json");
   const mockConfigDir = path.dirname(mockConfigPath);
+  const getMockConfig = (overrides = {}) => ({
+    include: ["**/*.js"],
+    exclude: ["node_modules/**"],
+    execOnChange: 'echo "Files changed"',
+    hashFile: ".hashes.json",
+    ...overrides,
+  });
+
+  const setupMocks = (config: Record<string, any>) => {
+    (lilconfig as Mock).mockReturnValue({
+      search: vi.fn(() => Promise.resolve({ config, filepath: mockConfigPath })),
+      load: vi.fn(() => Promise.resolve({ config, filepath: mockConfigPath })),
+    });
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("should run execOnChange and update the hash file if hashes mismatch", async () => {
-    const mockConfig = {
-      include: ["src/**/*.js"],
-      exclude: ["node_modules/**", "src/**/__tests__/**"],
-      execOnChange: 'echo "Files changed"',
-      hashFile: ".hashes.json",
-    };
+  const createHashRunner = (configPath?: string) => {
+    return new HashRunner(configPath);
+  };
 
-    (lilconfig as Mock).mockReturnValue({
-      search: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-      load: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-    });
+  it("should run execOnChange and update the hash file if hashes mismatch", async () => {
+    const mockConfig = getMockConfig();
+    setupMocks(mockConfig);
 
     const fileContent = "const a = 1;";
     const oldHashes = { "test.ts": "oldhash" };
@@ -66,7 +75,8 @@ describe("hashRunner", () => {
     mockedGlob.mockResolvedValue(Object.keys(currentHashes).map((file) => path.join(mockConfigDir, file)) as any);
     mockedReadFile.mockResolvedValue(fileContent);
 
-    await hashRunner();
+    const runner = createHashRunner();
+    await runner.run();
 
     expect(spawn).toHaveBeenCalledTimes(1);
     expect(spawn).toHaveBeenCalledWith(mockConfig.execOnChange, { cwd: mockConfigDir, shell: true, stdio: "inherit" });
@@ -78,17 +88,8 @@ describe("hashRunner", () => {
   });
 
   it("should not run execOnChange if hashes match", async () => {
-    const mockConfig = {
-      include: ["**/*.js"],
-      exclude: ["node_modules/**"],
-      execOnChange: 'echo "Files changed"',
-      hashFile: ".hashes.json",
-    };
-
-    (lilconfig as Mock).mockReturnValue({
-      search: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-      load: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-    });
+    const mockConfig = getMockConfig();
+    setupMocks(mockConfig);
 
     const fileContent = "const a = 1;";
     const currentHashes = {
@@ -99,24 +100,16 @@ describe("hashRunner", () => {
     mockedGlob.mockResolvedValue(Object.keys(currentHashes).map((file) => path.join(mockConfigDir, file)) as any);
     mockedReadFile.mockResolvedValue(fileContent);
 
-    await hashRunner();
+    const runner = createHashRunner();
+    await runner.run();
 
     expect(spawn).not.toHaveBeenCalled();
     expect(mockedWriteFile).not.toHaveBeenCalled();
   });
 
   it("should bypass hash checks and run execOnChange in CI mode", async () => {
-    const mockConfig = {
-      include: ["**/*.js"],
-      exclude: ["node_modules/**"],
-      execOnChange: 'echo "Files changed"',
-      hashFile: ".hashes.json",
-    };
-
-    (lilconfig as Mock).mockReturnValue({
-      search: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-      load: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-    });
+    const mockConfig = getMockConfig();
+    setupMocks(mockConfig);
 
     const originalCI = process.env.CI;
     process.env.CI = "true";
@@ -130,7 +123,8 @@ describe("hashRunner", () => {
       mockedGlob.mockResolvedValue(Object.keys(currentHashes).map((file) => path.join(mockConfigDir, file)) as any);
       mockedReadFile.mockResolvedValue(fileContent);
 
-      await hashRunner();
+      const runner = createHashRunner();
+      await runner.run();
 
       expect(spawn).toHaveBeenCalledWith(mockConfig.execOnChange, {
         cwd: mockConfigDir,
@@ -148,21 +142,13 @@ describe("hashRunner", () => {
       search: vi.fn(() => Promise.resolve(null)),
     });
 
-    await expect(hashRunner()).rejects.toThrow("Config file not found or is empty");
+    const runner = createHashRunner();
+    await expect(runner.run()).rejects.toThrow("[hash-runner] Config file not found or is empty");
   });
 
   it("should run execOnChange and create the hash file if it does not exist", async () => {
-    const mockConfig = {
-      include: ["**/*.js"],
-      exclude: ["node_modules/**"],
-      execOnChange: 'echo "Files changed"',
-      hashFile: ".hashes.json",
-    };
-
-    (lilconfig as Mock).mockReturnValue({
-      search: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-      load: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-    });
+    const mockConfig = getMockConfig();
+    setupMocks(mockConfig);
 
     const fileContent = "const a = 1;";
     const currentHashes = {
@@ -173,7 +159,8 @@ describe("hashRunner", () => {
     mockedGlob.mockResolvedValue(Object.keys(currentHashes).map((file) => path.join(mockConfigDir, file)) as any);
     mockedReadFile.mockResolvedValue(fileContent);
 
-    await hashRunner();
+    const runner = createHashRunner();
+    await runner.run();
 
     expect(spawn).toHaveBeenCalledTimes(1);
     expect(spawn).toHaveBeenCalledWith(mockConfig.execOnChange, { cwd: mockConfigDir, shell: true, stdio: "inherit" });
@@ -185,17 +172,8 @@ describe("hashRunner", () => {
   });
 
   it("should run execOnChange and update the hash file if hashes length mismatch", async () => {
-    const mockConfig = {
-      include: ["**/*.js"],
-      exclude: ["node_modules/**"],
-      execOnChange: 'echo "Files changed"',
-      hashFile: ".hashes.json",
-    };
-
-    (lilconfig as Mock).mockReturnValue({
-      search: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-      load: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-    });
+    const mockConfig = getMockConfig();
+    setupMocks(mockConfig);
 
     const fileContent1 = "const a = 1;";
     const fileContent2 = "const b = 2;";
@@ -212,7 +190,8 @@ describe("hashRunner", () => {
     mockedGlob.mockResolvedValue(Object.keys(currentHashes).map((file) => path.join(mockConfigDir, file)) as any);
     mockedReadFile.mockResolvedValueOnce(fileContent1).mockResolvedValueOnce(fileContent2);
 
-    await hashRunner();
+    const runner = createHashRunner();
+    await runner.run();
 
     expect(spawn).toHaveBeenCalledTimes(1);
     expect(spawn).toHaveBeenCalledWith(mockConfig.execOnChange, { cwd: mockConfigDir, shell: true, stdio: "inherit" });
@@ -224,21 +203,9 @@ describe("hashRunner", () => {
   });
 
   it("should run execOnChange and update the hash file if hashes mismatch using chunked comparisons", async () => {
-    const mockConfig = {
-      include: ["src/**/*.js"],
-      exclude: ["node_modules/**", "src/**/__tests__/**"],
-      execOnChange: 'echo "Files changed"',
-      hashFile: ".hashes.json",
-      parallelizeComparisonsChunkSize: 3,
-    };
+    const mockConfig = getMockConfig({ parallelizeComparisonsChunkSize: 3 });
+    setupMocks(mockConfig);
 
-    // Mocking the config loader to return our mock config
-    (lilconfig as Mock).mockReturnValue({
-      search: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-      load: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-    });
-
-    // Creating sample file contents and hashes
     const fileContents = Array.from({ length: 10 }, (_, i) => `const a${i} = ${i};`);
     const oldHashes = Object.fromEntries(
       fileContents.map((content, i) => [`file${i}.js`, createHash("sha256").update(`old${content}`).digest("hex")]),
@@ -247,15 +214,14 @@ describe("hashRunner", () => {
       fileContents.map((content, i) => [`file${i}.js`, createHash("sha256").update(content).digest("hex")]),
     );
 
-    // Mocking file reads
     mockedReadFile.mockResolvedValueOnce(JSON.stringify(oldHashes));
     mockedGlob.mockResolvedValue(fileContents.map((_, i) => path.join(mockConfigDir, `file${i}.js`)) as any);
-
     for (const content of fileContents) {
       mockedReadFile.mockResolvedValueOnce(content);
     }
 
-    await hashRunner();
+    const runner = createHashRunner();
+    await runner.run();
 
     expect(spawn).toHaveBeenCalledTimes(1);
     expect(spawn).toHaveBeenCalledWith(mockConfig.execOnChange, { cwd: mockConfigDir, shell: true, stdio: "inherit" });
@@ -267,35 +233,22 @@ describe("hashRunner", () => {
   });
 
   it("should not run execOnChange if hashes match using chunked comparisons with chunk size 2", async () => {
-    const mockConfig = {
-      include: ["src/**/*.js"],
-      exclude: ["node_modules/**", "src/**/__tests__/**"],
-      execOnChange: 'echo "Files changed"',
-      hashFile: ".hashes.json",
-      parallelizeComparisonsChunkSize: 2,
-    };
+    const mockConfig = getMockConfig({ parallelizeComparisonsChunkSize: 2 });
+    setupMocks(mockConfig);
 
-    // Mocking the config loader to return our mock config
-    (lilconfig as Mock).mockReturnValue({
-      search: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-      load: vi.fn(() => Promise.resolve({ config: mockConfig, filepath: mockConfigPath })),
-    });
-
-    // Creating sample file contents and hashes
     const fileContents = Array.from({ length: 10 }, (_, i) => `const a${i} = ${i};`);
     const currentHashes = Object.fromEntries(
       fileContents.map((content, i) => [`file${i}.js`, createHash("sha256").update(content).digest("hex")]),
     );
 
-    // Mocking file reads to return the current hashes
     mockedReadFile.mockResolvedValueOnce(JSON.stringify(currentHashes));
     mockedGlob.mockResolvedValue(fileContents.map((_, i) => path.join(mockConfigDir, `file${i}.js`)) as any);
-
     for (const content of fileContents) {
       mockedReadFile.mockResolvedValueOnce(content);
     }
 
-    await hashRunner();
+    const runner = createHashRunner();
+    await runner.run();
 
     expect(spawn).not.toHaveBeenCalled();
     expect(mockedWriteFile).not.toHaveBeenCalled();

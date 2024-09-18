@@ -1,11 +1,9 @@
-# hash-runner
-
 [![NPM version](https://img.shields.io/npm/v/hash-runner.svg?style=flat-square)](https://www.npmjs.com/package/hash-runner)
 ![NPM Downloads](https://img.shields.io/npm/dm/hash-runner)
 [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-%230074c1.svg)](http://www.typescriptlang.org/)
 
-`hash-runner` executes a command when a change is detected in specified files. 
-It calculates the SHA256 hash of the files and compares them to the previous hash values stored in a file. 
+`hash-runner` executes a command when a change is detected in specified files.
+It calculates the SHA256 hash of the files and compares them to the previous hash values stored in a file.
 If the hashes differ, the specified command is executed.
 
 *This tool is not an active file watcher that constantly checks for changes.*
@@ -47,12 +45,13 @@ npm install hash-runner --save-dev
 
 ## Usage
 
-`hash-runner [--config <config-file>] [--force]`
+`hash-runner [--config <config-file>] [--force] [--silent]`
 
 CLI options:
 
 * `-c / --config <config-file>`: Specify a custom configuration file.
 * `-f / --force`: Force the creation of a new hash file and execute.
+* `-s / --silent`: Suppress log output.
 
 ### Configuration
 
@@ -139,11 +138,26 @@ This will bypass hash checks and execute the specified command directly.
 In addition to the CLI, `hash-runner` can also be used programmatically:
 
 ```typescript
-import { hashRunner } from 'hash-runner';
+import { HashRunner } from 'hash-runner';
 
-// Run hash runner with a custom configuration file
-await hashRunner('/path/to/config.json');
+const runner = new HashRunner('/path/to/config.json', { force: true });
+await runner.run();
 ```
+
+### Constructor and Parameters
+
+#### `HashRunner(configPath?: string, options: HashRunnerOptions = {})`
+
+**Parameters:**
+
+- `configPath` (optional): A string representing the path to the configuration file. If not specified, `hash-runner` 
+will attempt to load the configuration from the current directory.
+- `options` (optional): An object containing options to configure the behavior of `hash-runner`.
+
+#### `HashRunnerOptions`
+
+- `force?` (boolean): Force the creation of a new hash file and execute the command regardless of detected changes.
+- `silent?` (boolean): Suppress log output when set to `true`.
 
 ## Troubleshooting
 
