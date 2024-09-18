@@ -1,5 +1,11 @@
 # hash-runner
 
+## 2.0.1
+
+### Patch Changes
+
+- [`f021194`](https://github.com/theogravity/hash-runner/commit/f0211945173309ab3bee84222a1826c615f48394) Thanks [@theogravity](https://github.com/theogravity)! - Remove redundant log entry
+
 ## 2.0.0
 
 ### Major Changes
