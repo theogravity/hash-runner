@@ -9,7 +9,7 @@
       "dependsOn": ["test","lint", "^build"],
       "cache": true,
       "persistent": false,
-      "inputs": ["$TURBO_DEFAULT$"],
+      "inputs": ["src/**", "package.json"],
       "outputs": ["dist/**"]
     },
     "test": {},

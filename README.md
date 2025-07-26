@@ -70,10 +70,13 @@ CLI options:
 - `include`: An array of glob patterns specifying the files to include in the hash calculation.
 - `exclude`: An array of glob patterns specifying the files to exclude from the hash calculation.
   * `node_modules` is always excluded and does not need to be specified.
+  * The hash file (specified in `hashFile`) is automatically excluded and does not need to be specified.
+  * The configuration file itself is automatically excluded and does not need to be specified.
 - `execOnChange`: The command to execute when changes are detected.
   * `hash-runner` will exit with the status code of the executed command after completion.
 - `hashFile`: The path to the file where hashes are stored.
   * It is recommended you add the `hashFile` to your `.gitignore` file.
+  * This file is automatically excluded from hash calculations to prevent circular dependencies.
 - `parallelizeComparisonsChunkSize`: Will start parallelizing the hash comparison per specified number of file entries.
   * Default is 100 files, meaning that the hash comparison will be parallelized for every 100 files.
 

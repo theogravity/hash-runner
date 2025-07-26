@@ -103,12 +103,26 @@ export class HashRunner {
    * Gets the hashes of files included in the configuration.
    * @param {string} configDir - Directory containing the configuration.
    * @param {HashRunnerConfigFile} config - Configuration object.
+   * @param {string} configFilePath - Path to the configuration file to exclude from processing.
    * @returns {Promise<Record<string, string>>} - A record of file paths and their corresponding hashes.
    * @private
    */
-  private async getHashedFiles(configDir: string, config: HashRunnerConfigFile): Promise<Record<string, string>> {
+  private async getHashedFiles(
+    configDir: string,
+    config: HashRunnerConfigFile,
+    configFilePath: string,
+  ): Promise<Record<string, string>> {
     const includePatterns = config.include || [];
     const excludePatterns = [...(config.exclude || []), "node_modules/**"];
+
+    // Auto-exclude the hash file from the config
+    const hashFilePath = path.join(configDir, config.hashFile);
+    const relativeHashPath = path.relative(configDir, hashFilePath);
+    excludePatterns.push(relativeHashPath);
+
+    // Auto-exclude the config file
+    const relativeConfigPath = path.relative(configDir, configFilePath);
+    excludePatterns.push(relativeConfigPath);
 
     const includedFiles = await glob(includePatterns, {
       cwd: configDir,
@@ -132,11 +146,11 @@ export class HashRunner {
 
   /**
    * Loads the configuration from a file.
-   * @returns {Promise<{ config: HashRunnerConfigFile; configDir: string }>} - The configuration and its directory.
+   * @returns {Promise<{ config: HashRunnerConfigFile; configDir: string; configFilePath: string }>} - The configuration, its directory, and file path.
    * @throws {Error} - Throws an error if the config file is not found or is empty.
    * @private
    */
-  private async loadConfig(): Promise<{ config: HashRunnerConfigFile; configDir: string }> {
+  private async loadConfig(): Promise<{ config: HashRunnerConfigFile; configDir: string; configFilePath: string }> {
     const explorer = lilconfig("hash-runner");
     let result: LilconfigResult;
 
@@ -150,7 +164,7 @@ export class HashRunner {
       throw new Error("[hash-runner] Config file not found or is empty");
     }
 
-    return { config: result.config, configDir: path.dirname(result.filepath) };
+    return { config: result.config, configDir: path.dirname(result.filepath), configFilePath: result.filepath };
   }
 
   /**
@@ -163,7 +177,7 @@ export class HashRunner {
     try {
       const content = await fs.readFile(hashFilePath, "utf8");
       return JSON.parse(content);
-    } catch (e) {
+    } catch (_e) {
       return null;
     }
   }
@@ -247,7 +261,7 @@ export class HashRunner {
    * @returns {Promise<void>}
    */
   public async run(): Promise<void> {
-    const { config, configDir } = await this.loadConfig();
+    const { config, configDir, configFilePath } = await this.loadConfig();
     const hashFilePath = path.join(configDir, config.hashFile);
 
     if (CI) {
@@ -259,7 +273,7 @@ export class HashRunner {
 
     const [previousHashes, currentHashes] = await Promise.all([
       this.readHashFile(hashFilePath),
-      this.getHashedFiles(configDir, config),
+      this.getHashedFiles(configDir, config, configFilePath),
     ]);
 
     debug(`Forced hash regeneration: ${!!this.options.force}`);

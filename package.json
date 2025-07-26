@@ -30,9 +30,7 @@
     "clean": "rm -rf node_modules dist",
     "debug": "ts-node-dev --inspect -- src/index.ts",
     "debug:break": "ts-node-dev --inspect-brk -- src/index.ts",
-    "lint": "biome check --write --unsafe src && biome format src --write && biome lint src --fix",
-    "lint-staged": "lint-staged",
-    "prepare": "husky",
+    "lint": "biome check --write --unsafe src",
     "release": "changeset publish",
     "syncpack:update": "syncpack update",
     "syncpack:fix": "syncpack fix-mismatches",
@@ -44,24 +42,23 @@
     "version-packages": "changeset version"
   },
   "dependencies": {
-    "commander": "12.1.0",
-    "debug": "4.3.7",
-    "glob": "11.0.0",
-    "lilconfig": "3.1.2"
+    "commander": "14.0.0",
+    "debug": "4.4.1",
+    "glob": "11.0.3",
+    "lilconfig": "3.1.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.9.0",
-    "@changesets/changelog-github": "0.5.0",
-    "@changesets/cli": "2.27.8",
-    "@commitlint/cli": "19.5.0",
-    "@commitlint/config-conventional": "19.5.0",
-    "@types/node": "22.5.5",
-    "husky": "9.1.6",
-    "lint-staged": "15.2.10",
-    "syncpack": "13.0.0",
-    "turbo": "2.1.2",
-    "typescript": "5.6.2",
-    "vitest": "2.1.1"
+    "@biomejs/biome": "2.1.2",
+    "@changesets/changelog-github": "0.5.1",
+    "@changesets/cli": "2.29.5",
+    "@commitlint/cli": "19.8.1",
+    "@commitlint/config-conventional": "19.8.1",
+    "@types/node": "24.1.0",
+    "lefthook": "1.12.2",
+    "syncpack": "13.0.4",
+    "turbo": "2.5.5",
+    "typescript": "5.8.3",
+    "vitest": "3.2.4"
   },
   "bin": {
     "hash-runner": "dist/cjs/bin/hash-runner.js"
@@ -75,16 +72,7 @@
   ],
   "homepage": "https://github.com/theogravity/hash-runner",
   "license": "MIT",
-  "lint-staged": {
-    "**/*.{js,jsx,ts,tsx,html,css,json}": [
-      "pnpm run lint"
-    ],
-    "**/package.json": [
-      "pnpm run syncpack:format",
-      "pnpm run syncpack:lint"
-    ]
-  },
-  "packageManager": "pnpm@9.6.0",
+  "packageManager": "pnpm@10.12.4",
   "publishConfig": {
     "access": "public"
   },

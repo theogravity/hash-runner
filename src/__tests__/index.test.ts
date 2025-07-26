@@ -4,7 +4,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { glob } from "glob";
 import { lilconfig } from "lilconfig";
-import { type Mock, type MockedFunction, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, type MockedFunction, vi } from "vitest";
 import { HashRunner } from "../index";
 
 vi.mock("lilconfig", () => ({
@@ -19,7 +19,7 @@ vi.mock("child_process");
 vi.mock("glob");
 
 vi.mock("node:child_process", () => ({
-  spawn: vi.fn((command: string, args: string[], options: any) => {
+  spawn: vi.fn((_command: string, _args: string[], _options: any) => {
     const mockProcess = {
       on: (event: string, callback: (code: number) => void) => {
         if (event === "close") {
@@ -252,5 +252,88 @@ describe("HashRunner", () => {
 
     expect(spawn).not.toHaveBeenCalled();
     expect(mockedWriteFile).not.toHaveBeenCalled();
+  });
+
+  it("should automatically exclude the hash file from processing", async () => {
+    const mockConfig = getMockConfig();
+    setupMocks(mockConfig);
+
+    const fileContent = "const a = 1;";
+    const currentHashes = {
+      "file.js": createHash("sha256").update(fileContent).digest("hex"),
+    };
+
+    // Mock that the hash file exists and has the same content as current hashes
+    mockedReadFile.mockResolvedValueOnce(JSON.stringify(currentHashes));
+
+    // Mock glob to return only the regular file (since hash file should be excluded)
+    const includedFiles = [path.join(mockConfigDir, "file.js")];
+    mockedGlob.mockResolvedValue(includedFiles as any);
+    mockedReadFile.mockResolvedValue(fileContent);
+
+    const runner = createHashRunner();
+    await runner.run();
+
+    // Verify that glob was called with the correct exclude patterns
+    expect(mockedGlob).toHaveBeenCalledWith(
+      mockConfig.include,
+      expect.objectContaining({
+        ignore: expect.arrayContaining([
+          ...mockConfig.exclude,
+          "node_modules/**",
+          mockConfig.hashFile, // The hash file should be in the exclude patterns
+        ]),
+      }),
+    );
+
+    // Verify that the hash file was excluded from glob results
+    expect(mockedGlob).toHaveBeenCalledWith(
+      mockConfig.include,
+      expect.objectContaining({
+        ignore: expect.arrayContaining([mockConfig.hashFile]),
+      }),
+    );
+  });
+
+  it("should automatically exclude the configuration file from processing", async () => {
+    const mockConfig = getMockConfig();
+    setupMocks(mockConfig);
+
+    const fileContent = "const a = 1;";
+    const currentHashes = {
+      "file.js": createHash("sha256").update(fileContent).digest("hex"),
+    };
+
+    // Mock that the hash file exists and has the same content as current hashes
+    mockedReadFile.mockResolvedValueOnce(JSON.stringify(currentHashes));
+
+    // Mock glob to return only the regular file (since config file should be excluded)
+    const includedFiles = [path.join(mockConfigDir, "file.js")];
+    mockedGlob.mockResolvedValue(includedFiles as any);
+    mockedReadFile.mockResolvedValue(fileContent);
+
+    const runner = createHashRunner();
+    await runner.run();
+
+    // Verify that glob was called with the correct exclude patterns
+    expect(mockedGlob).toHaveBeenCalledWith(
+      mockConfig.include,
+      expect.objectContaining({
+        ignore: expect.arrayContaining([
+          ...mockConfig.exclude,
+          "node_modules/**",
+          mockConfig.hashFile, // The hash file should be in the exclude patterns
+          ".hash-runner.json", // The config file should be in the exclude patterns
+        ]),
+      }),
+    );
+
+    // Verify that the config file was excluded from glob results
+    expect(mockedGlob).toHaveBeenCalledWith(
+      mockConfig.include,
+      expect.objectContaining({
+        ignore: expect.arrayContaining([".hash-runner.json"]),
+      }),
+    );
   });
 });

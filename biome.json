@@ -1,28 +1,28 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.6.3/schema.json",
-  "organizeImports": {
-    "enabled": true
+  "$schema": "https://biomejs.dev/schemas/2.1.2/schema.json",
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "files": {
+    "includes": [
+      "**",
+      "!**/vendor/**/*",
+      "!**/node_modules/**/*",
+      "!**/*.config.*",
+      "!**/*.json",
+      "!**/tsconfig.json",
+      "!**/.turbo",
+      "!**/build/**/*",
+      "!**/coverage/**/*",
+      "!**/.pnpm-store/**/*",
+      "!**/dist/**/*"
+    ]
   },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
-    "lineWidth": 120,
-    "ignore": [
-      "vendor/*",
-      "node_modules/*",
-      "*.config.*",
-      "*.json",
-      "tsconfig.json",
-      ".turbo",
-      "build/*",
-      "coverage/*",
-      ".pnpm-store/*",
-      "dist/*"
-    ]
+    "lineWidth": 120
   },
   "linter": {
     "enabled": true,
-    "ignore": ["build/*", "coverage/*"],
     "rules": {
       "style": {
         "noNonNullAssertion": "off"
