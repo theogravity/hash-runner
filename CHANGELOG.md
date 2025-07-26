@@ -1,5 +1,11 @@
 # hash-runner
 
+## 2.1.0
+
+### Minor Changes
+
+- [`52dc06a`](https://github.com/theogravity/hash-runner/commit/52dc06a7649a04b3b2a2d91eb232a2757381feab) Thanks [@theogravity](https://github.com/theogravity)! - Auto-exclude the hash config file and hash file
+
 ## 2.0.1
 
 ### Patch Changes
