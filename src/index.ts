@@ -115,14 +115,12 @@ export class HashRunner {
     const includePatterns = config.include || [];
     const excludePatterns = [...(config.exclude || []), "node_modules/**"];
 
-    // Auto-exclude the hash file from the config
-    const hashFilePath = path.join(configDir, config.hashFile);
-    const relativeHashPath = path.relative(configDir, hashFilePath);
-    excludePatterns.push(relativeHashPath);
+    // Auto-exclude the hash file from the config using glob pattern
+    excludePatterns.push(config.hashFile);
 
-    // Auto-exclude the config file
-    const relativeConfigPath = path.relative(configDir, configFilePath);
-    excludePatterns.push(relativeConfigPath);
+    // Auto-exclude the config file using glob pattern
+    const configFileName = path.basename(configFilePath);
+    excludePatterns.push(configFileName);
 
     const includedFiles = await glob(includePatterns, {
       cwd: configDir,
