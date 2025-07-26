@@ -1,5 +1,11 @@
 # hash-runner
 
+## 2.1.1
+
+### Patch Changes
+
+- [`932bf6d`](https://github.com/theogravity/hash-runner/commit/932bf6deda9fbec3fd569db00474ec737c38520b) Thanks [@theogravity](https://github.com/theogravity)! - Fix for auto-including the hash and config file was not working in prev version, second attempt
+
 ## 2.1.0
 
 ### Minor Changes
