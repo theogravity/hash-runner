@@ -1,5 +1,11 @@
 # hash-runner
 
+## 3.1.0
+
+### Minor Changes
+
+- [`009c22b`](https://github.com/theogravity/hash-runner/commit/009c22bc4c2a445935e6b722250661c5c4a0e5f6) Thanks [@theogravity](https://github.com/theogravity)! - All hash keys are now sorted alphabetically to ensure a consistent hash file
+
 ## 3.0.0
 
 ### Major Changes
