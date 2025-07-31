@@ -69,7 +69,6 @@ CLI options:
 
 - `include`: An array of glob patterns specifying the files to include in the hash calculation.
 - `exclude`: An array of glob patterns specifying the files to exclude from the hash calculation.
-  * `node_modules` is always excluded and does not need to be specified.
   * The hash file (specified in `hashFile`) is automatically excluded and does not need to be specified.
   * The configuration file itself is automatically excluded and does not need to be specified.
 - `execOnChange`: The command to execute when changes are detected.

@@ -113,7 +113,7 @@ export class HashRunner {
     configFilePath: string,
   ): Promise<Record<string, string>> {
     const includePatterns = config.include || [];
-    const excludePatterns = [...(config.exclude || []), "node_modules/**"];
+    const excludePatterns = [...(config.exclude || [])];
 
     // Auto-exclude the hash file from the config using glob pattern
     excludePatterns.push(config.hashFile);
