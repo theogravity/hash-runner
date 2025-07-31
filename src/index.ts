@@ -188,7 +188,18 @@ export class HashRunner {
    * @private
    */
   private async writeHashFile(hashFilePath: string, hashData: Record<string, string>): Promise<void> {
-    await fs.writeFile(hashFilePath, JSON.stringify(hashData, null, 2));
+    // Create a sorted version of the hash data with alphabetized keys
+    const sortedHashData = Object.keys(hashData)
+      .sort()
+      .reduce(
+        (sorted, key) => {
+          sorted[key] = hashData[key];
+          return sorted;
+        },
+        {} as Record<string, string>,
+      );
+
+    await fs.writeFile(hashFilePath, JSON.stringify(sortedHashData, null, 2));
   }
 
   /**

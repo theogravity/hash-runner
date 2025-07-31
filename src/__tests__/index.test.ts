@@ -471,4 +471,54 @@ describe("HashRunner", () => {
       }),
     );
   });
+
+  it("should alphabetize hash file contents before saving", async () => {
+    const mockConfig = getMockConfig();
+    setupMocks(mockConfig);
+
+    const fileContent1 = "const a = 1;";
+    const fileContent2 = "const b = 2;";
+    const fileContent3 = "const c = 3;";
+
+    // Create hashes in non-alphabetical order
+    const currentHashes = {
+      "zebra.js": createHash("sha256").update(fileContent3).digest("hex"),
+      "apple.js": createHash("sha256").update(fileContent1).digest("hex"),
+      "banana.js": createHash("sha256").update(fileContent2).digest("hex"),
+    };
+
+    // Mock that no previous hash file exists
+    mockedReadFile.mockRejectedValueOnce(new Error("File not found"));
+
+    // Mock glob to return the files
+    const includedFiles = [
+      path.join(mockConfigDir, "apple.js"),
+      path.join(mockConfigDir, "banana.js"),
+      path.join(mockConfigDir, "zebra.js"),
+    ];
+    mockedGlob.mockResolvedValue(includedFiles as any);
+
+    // Mock readFile to return different content for each file
+    mockedReadFile
+      .mockResolvedValueOnce(fileContent1) // apple.js
+      .mockResolvedValueOnce(fileContent2) // banana.js
+      .mockResolvedValueOnce(fileContent3); // zebra.js
+
+    const runner = createHashRunner();
+    await runner.run();
+
+    // Verify that writeFile was called with alphabetized content
+    expect(mockedWriteFile).toHaveBeenCalledWith(
+      path.join(mockConfigDir, mockConfig.hashFile),
+      JSON.stringify(
+        {
+          "apple.js": currentHashes["apple.js"],
+          "banana.js": currentHashes["banana.js"],
+          "zebra.js": currentHashes["zebra.js"],
+        },
+        null,
+        2,
+      ),
+    );
+  });
 });
