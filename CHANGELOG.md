@@ -1,5 +1,11 @@
 # hash-runner
 
+## 3.0.0
+
+### Major Changes
+
+- [`a29fcf0`](https://github.com/theogravity/hash-runner/commit/a29fcf07e20cc34e5883c3e734cacbb98af2f72a) Thanks [@theogravity](https://github.com/theogravity)! - **Breaking:** Remove automatic addition of `node_modules` to the exclusion list. This change will allow you to detect for changes in any dependent packages if specified.
+
 ## 2.1.1
 
 ### Patch Changes
