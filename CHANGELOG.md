@@ -1,5 +1,51 @@
 # hash-runner
 
+## 4.0.0
+
+### Major Changes
+
+- [`82416f1`](https://github.com/theogravity/hash-runner/commit/82416f14a3c5565bd141ab7a45d95492ce0a0cf4) Thanks [@theogravity](https://github.com/theogravity)! - v4 has a new configuration format and adds an `outputs` object to track output files.
+
+  v3 or older configuration:
+
+  ```json
+  {
+    "include": ["src/**"],
+    "exclude": ["src/generated/**"],
+    "execOnChange": "npm run build",
+    "hashFile": ".hashes.json"
+  }
+  ```
+
+  v4 configuration:
+
+  ```json
+  {
+    "inputs": {
+      "includes": ["src/**"],
+      "excludes": ["src/generated/**"]
+    },
+    "execOnChange": "npm run build",
+    "hashFile": ".hashes.json"
+  }
+  ```
+
+  To add support for outputs, you can modify the configuration like this:
+
+  ```json
+  {
+    "inputs": {
+      "includes": ["src/**"],
+      "excludes": ["src/generated/**"]
+    },
+    "outputs": {
+      "includes": ["dist/**"]
+    },
+    "execOnChange": "npm run build",
+    "hashFile": ".hashes.json"
+  }
+  ```
+
 ## 3.1.0
 
 ### Minor Changes
