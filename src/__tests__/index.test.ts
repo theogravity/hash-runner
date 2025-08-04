@@ -39,8 +39,10 @@ describe("HashRunner", () => {
   const mockConfigPath = path.resolve(__dirname, "..", ".hash-runner.json");
   const mockConfigDir = path.dirname(mockConfigPath);
   const getMockConfig = (overrides = {}) => ({
-    include: ["**/*.js"],
-    exclude: [],
+    inputs: {
+      includes: ["**/*.js"],
+      excludes: [],
+    },
     execOnChange: 'echo "Files changed"',
     hashFile: ".hashes.json",
     ...overrides,
@@ -66,12 +68,15 @@ describe("HashRunner", () => {
     setupMocks(mockConfig);
 
     const fileContent = "const a = 1;";
-    const oldHashes = { "test.ts": "oldhash" };
+    const oldHashFile = {
+      hashSchemaVersion: "2" as const,
+      inputs: { "test.ts": "oldhash" },
+    };
     const currentHashes = {
       "test.ts": createHash("sha256").update(fileContent).digest("hex"),
     };
 
-    mockedReadFile.mockResolvedValueOnce(JSON.stringify(oldHashes));
+    mockedReadFile.mockResolvedValueOnce(JSON.stringify(oldHashFile));
     mockedGlob.mockResolvedValue(Object.keys(currentHashes).map((file) => path.join(mockConfigDir, file)) as any);
     mockedReadFile.mockResolvedValue(fileContent);
 
@@ -83,7 +88,15 @@ describe("HashRunner", () => {
 
     expect(mockedWriteFile).toHaveBeenCalledWith(
       path.join(mockConfigDir, mockConfig.hashFile),
-      JSON.stringify(currentHashes, null, 2),
+      JSON.stringify(
+        {
+          hashSchemaVersion: "2",
+          inputs: currentHashes,
+          outputs: undefined,
+        },
+        null,
+        2,
+      ),
     );
   });
 
@@ -95,8 +108,12 @@ describe("HashRunner", () => {
     const currentHashes = {
       "file.js": createHash("sha256").update(fileContent).digest("hex"),
     };
+    const hashFile = {
+      hashSchemaVersion: "2" as const,
+      inputs: currentHashes,
+    };
 
-    mockedReadFile.mockResolvedValueOnce(JSON.stringify(currentHashes));
+    mockedReadFile.mockResolvedValueOnce(JSON.stringify(hashFile));
     mockedGlob.mockResolvedValue(Object.keys(currentHashes).map((file) => path.join(mockConfigDir, file)) as any);
     mockedReadFile.mockResolvedValue(fileContent);
 
@@ -167,7 +184,15 @@ describe("HashRunner", () => {
 
     expect(mockedWriteFile).toHaveBeenCalledWith(
       path.join(mockConfigDir, mockConfig.hashFile),
-      JSON.stringify(currentHashes, null, 2),
+      JSON.stringify(
+        {
+          hashSchemaVersion: "2",
+          inputs: currentHashes,
+          outputs: undefined,
+        },
+        null,
+        2,
+      ),
     );
   });
 
@@ -178,15 +203,18 @@ describe("HashRunner", () => {
     const fileContent1 = "const a = 1;";
     const fileContent2 = "const b = 2;";
 
-    const oldHashes = {
-      "file1.js": createHash("sha256").update(fileContent1).digest("hex"),
+    const oldHashFile = {
+      hashSchemaVersion: "2" as const,
+      inputs: {
+        "file1.js": createHash("sha256").update(fileContent1).digest("hex"),
+      },
     };
     const currentHashes = {
       "file1.js": createHash("sha256").update(fileContent1).digest("hex"),
       "file2.js": createHash("sha256").update(fileContent2).digest("hex"),
     };
 
-    mockedReadFile.mockResolvedValueOnce(JSON.stringify(oldHashes));
+    mockedReadFile.mockResolvedValueOnce(JSON.stringify(oldHashFile));
     mockedGlob.mockResolvedValue(Object.keys(currentHashes).map((file) => path.join(mockConfigDir, file)) as any);
     mockedReadFile.mockResolvedValueOnce(fileContent1).mockResolvedValueOnce(fileContent2);
 
@@ -198,7 +226,15 @@ describe("HashRunner", () => {
 
     expect(mockedWriteFile).toHaveBeenCalledWith(
       path.join(mockConfigDir, mockConfig.hashFile),
-      JSON.stringify(currentHashes, null, 2),
+      JSON.stringify(
+        {
+          hashSchemaVersion: "2",
+          inputs: currentHashes,
+          outputs: undefined,
+        },
+        null,
+        2,
+      ),
     );
   });
 
@@ -214,7 +250,12 @@ describe("HashRunner", () => {
       fileContents.map((content, i) => [`file${i}.js`, createHash("sha256").update(content).digest("hex")]),
     );
 
-    mockedReadFile.mockResolvedValueOnce(JSON.stringify(oldHashes));
+    const oldHashFile = {
+      hashSchemaVersion: "2" as const,
+      inputs: oldHashes,
+    };
+
+    mockedReadFile.mockResolvedValueOnce(JSON.stringify(oldHashFile));
     mockedGlob.mockResolvedValue(fileContents.map((_, i) => path.join(mockConfigDir, `file${i}.js`)) as any);
     for (const content of fileContents) {
       mockedReadFile.mockResolvedValueOnce(content);
@@ -228,7 +269,15 @@ describe("HashRunner", () => {
 
     expect(mockedWriteFile).toHaveBeenCalledWith(
       path.join(mockConfigDir, mockConfig.hashFile),
-      JSON.stringify(currentHashes, null, 2),
+      JSON.stringify(
+        {
+          hashSchemaVersion: "2",
+          inputs: currentHashes,
+          outputs: undefined,
+        },
+        null,
+        2,
+      ),
     );
   });
 
@@ -276,10 +325,10 @@ describe("HashRunner", () => {
 
     // Verify that glob was called with the correct exclude patterns
     expect(mockedGlob).toHaveBeenCalledWith(
-      mockConfig.include,
+      mockConfig.inputs.includes,
       expect.objectContaining({
         ignore: expect.arrayContaining([
-          ...mockConfig.exclude,
+          ...(mockConfig.inputs.excludes || []),
           mockConfig.hashFile, // The hash file should be in the exclude patterns
         ]),
       }),
@@ -287,7 +336,7 @@ describe("HashRunner", () => {
 
     // Verify that the hash file was excluded from glob results
     expect(mockedGlob).toHaveBeenCalledWith(
-      mockConfig.include,
+      mockConfig.inputs.includes,
       expect.objectContaining({
         ignore: expect.arrayContaining([mockConfig.hashFile]),
       }),
@@ -316,10 +365,10 @@ describe("HashRunner", () => {
 
     // Verify that glob was called with the correct exclude patterns
     expect(mockedGlob).toHaveBeenCalledWith(
-      mockConfig.include,
+      mockConfig.inputs.includes,
       expect.objectContaining({
         ignore: expect.arrayContaining([
-          ...mockConfig.exclude,
+          ...(mockConfig.inputs.excludes || []),
           mockConfig.hashFile, // The hash file should be in the exclude patterns
           ".hash-runner.json", // The config file should be in the exclude patterns
         ]),
@@ -328,7 +377,7 @@ describe("HashRunner", () => {
 
     // Verify that the config file was excluded from glob results
     expect(mockedGlob).toHaveBeenCalledWith(
-      mockConfig.include,
+      mockConfig.inputs.includes,
       expect.objectContaining({
         ignore: expect.arrayContaining([".hash-runner.json"]),
       }),
@@ -337,7 +386,10 @@ describe("HashRunner", () => {
 
   it("should exclude hash file even when included by wildcard pattern", async () => {
     const mockConfig = getMockConfig({
-      include: ["*.json"], // This would normally include .hashes.json
+      inputs: {
+        includes: ["*.json"], // This would normally include .hashes.json
+        excludes: [],
+      },
       hashFile: ".hashes.json",
     });
     setupMocks(mockConfig);
@@ -363,7 +415,7 @@ describe("HashRunner", () => {
       ["*.json"],
       expect.objectContaining({
         ignore: expect.arrayContaining([
-          ...mockConfig.exclude,
+          ...(mockConfig.inputs.excludes || []),
           ".hashes.json", // The hash file should be excluded even with *.json include pattern
         ]),
       }),
@@ -380,7 +432,10 @@ describe("HashRunner", () => {
 
   it("should exclude config file even when included by wildcard pattern", async () => {
     const mockConfig = getMockConfig({
-      include: ["*.json"], // This would normally include .hash-runner.json
+      inputs: {
+        includes: ["*.json"], // This would normally include .hash-runner.json
+        excludes: [],
+      },
     });
     setupMocks(mockConfig);
 
@@ -405,7 +460,7 @@ describe("HashRunner", () => {
       ["*.json"],
       expect.objectContaining({
         ignore: expect.arrayContaining([
-          ...mockConfig.exclude,
+          ...(mockConfig.inputs.excludes || []),
           mockConfig.hashFile, // The hash file should be excluded
           ".hash-runner.json", // The config file should be excluded even with *.json include pattern
         ]),
@@ -423,7 +478,10 @@ describe("HashRunner", () => {
 
   it("should exclude JavaScript config file even when included by wildcard pattern", async () => {
     const mockConfig = getMockConfig({
-      include: ["*.js"], // This would normally include hash-runner.config.js
+      inputs: {
+        includes: ["*.js"], // This would normally include hash-runner.config.js
+        excludes: [],
+      },
     });
 
     // Mock a different config file path for this test
@@ -456,7 +514,7 @@ describe("HashRunner", () => {
       ["*.js"],
       expect.objectContaining({
         ignore: expect.arrayContaining([
-          ...mockConfig.exclude,
+          ...(mockConfig.inputs.excludes || []),
           mockConfig.hashFile, // The hash file should be excluded
           "hash-runner.config.js", // The config file should be excluded even with *.js include pattern
         ]),
@@ -512,13 +570,202 @@ describe("HashRunner", () => {
       path.join(mockConfigDir, mockConfig.hashFile),
       JSON.stringify(
         {
-          "apple.js": currentHashes["apple.js"],
-          "banana.js": currentHashes["banana.js"],
-          "zebra.js": currentHashes["zebra.js"],
+          hashSchemaVersion: "2",
+          inputs: {
+            "apple.js": currentHashes["apple.js"],
+            "banana.js": currentHashes["banana.js"],
+            "zebra.js": currentHashes["zebra.js"],
+          },
+          outputs: undefined,
         },
         null,
         2,
       ),
     );
+  });
+
+  describe("configuration validation", () => {
+    it("should throw error for v3 configuration format", async () => {
+      const v3Config = {
+        include: ["**/*.js"],
+        exclude: [],
+        execOnChange: 'echo "test"',
+        hashFile: ".hashes.json",
+      };
+      setupMocks(v3Config);
+
+      const runner = createHashRunner();
+      await expect(runner.run()).rejects.toThrow(
+        "[hash-runner] Detected v3 configuration format. Please see MIGRATING.md for migration instructions.",
+      );
+    });
+
+    it("should migrate v1 hash file format to v2", async () => {
+      const mockConfig = getMockConfig();
+      setupMocks(mockConfig);
+
+      const fileContent = "const a = 1;";
+      const currentHashes = {
+        "file.js": createHash("sha256").update(fileContent).digest("hex"),
+      };
+
+      // Simulate old v1 hash file format (just Record<string, string>)
+      const v1HashFile = currentHashes;
+
+      mockedReadFile.mockResolvedValueOnce(JSON.stringify(v1HashFile));
+      mockedGlob.mockResolvedValue(Object.keys(currentHashes).map((file) => path.join(mockConfigDir, file)) as any);
+      mockedReadFile.mockResolvedValue(fileContent);
+
+      const runner = createHashRunner();
+      await runner.run();
+
+      expect(spawn).not.toHaveBeenCalled();
+      expect(mockedWriteFile).not.toHaveBeenCalled();
+    });
+
+    it("should throw error for invalid v4 configuration", async () => {
+      const invalidConfig = {
+        execOnChange: 'echo "test"',
+        hashFile: ".hashes.json",
+        // Missing inputs
+      };
+      setupMocks(invalidConfig);
+
+      const runner = createHashRunner();
+      await expect(runner.run()).rejects.toThrow("[hash-runner] Configuration must have inputs.includes array");
+    });
+  });
+
+  describe("outputs functionality", () => {
+    it("should run command when outputs are missing", async () => {
+      const mockConfig = getMockConfig({
+        outputs: {
+          includes: ["dist/**/*.js"],
+        },
+      });
+      setupMocks(mockConfig);
+
+      const fileContent = "const a = 1;";
+      const currentInputHashes = {
+        "src/file.js": createHash("sha256").update(fileContent).digest("hex"),
+      };
+      const hashFile = {
+        hashSchemaVersion: "2" as const,
+        inputs: currentInputHashes,
+        outputs: { "dist/file.js": "somehash" },
+      };
+
+      mockedReadFile.mockResolvedValueOnce(JSON.stringify(hashFile));
+
+      // Mock input files glob
+      mockedGlob.mockResolvedValueOnce([path.join(mockConfigDir, "src/file.js")] as any);
+      // Mock output files glob (returns empty - outputs missing)
+      mockedGlob.mockResolvedValueOnce([] as any);
+
+      mockedReadFile.mockResolvedValueOnce(fileContent); // for input file
+
+      // After command runs, mock output files exist
+      mockedGlob.mockResolvedValueOnce([path.join(mockConfigDir, "dist/file.js")] as any);
+      const outputContent = "console.log('compiled');";
+      mockedReadFile.mockResolvedValueOnce(outputContent); // for output file after command
+
+      const runner = createHashRunner();
+      await runner.run();
+
+      expect(spawn).toHaveBeenCalledTimes(1);
+      expect(spawn).toHaveBeenCalledWith(mockConfig.execOnChange, {
+        cwd: mockConfigDir,
+        shell: true,
+        stdio: "inherit",
+      });
+    });
+
+    it("should run command when outputs have changed", async () => {
+      const mockConfig = getMockConfig({
+        outputs: {
+          includes: ["dist/**/*.js"],
+        },
+      });
+      setupMocks(mockConfig);
+
+      const fileContent = "const a = 1;";
+      const currentInputHashes = {
+        "src/file.js": createHash("sha256").update(fileContent).digest("hex"),
+      };
+
+      const oldOutputContent = "console.log('old');";
+      const newOutputContent = "console.log('new');";
+
+      const hashFile = {
+        hashSchemaVersion: "2" as const,
+        inputs: currentInputHashes,
+        outputs: { "dist/file.js": createHash("sha256").update(oldOutputContent).digest("hex") },
+      };
+
+      mockedReadFile.mockResolvedValueOnce(JSON.stringify(hashFile));
+
+      // Mock input files glob
+      mockedGlob.mockResolvedValueOnce([path.join(mockConfigDir, "src/file.js")] as any);
+      // Mock output files glob
+      mockedGlob.mockResolvedValueOnce([path.join(mockConfigDir, "dist/file.js")] as any);
+
+      mockedReadFile.mockResolvedValueOnce(fileContent); // for input file
+      mockedReadFile.mockResolvedValueOnce(newOutputContent); // for output file (changed)
+
+      // After command runs, mock output files exist
+      mockedGlob.mockResolvedValueOnce([path.join(mockConfigDir, "dist/file.js")] as any);
+      mockedReadFile.mockResolvedValueOnce(newOutputContent); // for output file after command
+
+      const runner = createHashRunner();
+      await runner.run();
+
+      expect(spawn).toHaveBeenCalledTimes(1);
+      expect(spawn).toHaveBeenCalledWith(mockConfig.execOnChange, {
+        cwd: mockConfigDir,
+        shell: true,
+        stdio: "inherit",
+      });
+    });
+
+    it("should not run command when inputs and outputs are unchanged", async () => {
+      const mockConfig = getMockConfig({
+        outputs: {
+          includes: ["dist/**/*.js"],
+        },
+      });
+      setupMocks(mockConfig);
+
+      const inputContent = "const a = 1;";
+      const outputContent = "console.log('compiled');";
+
+      const currentInputHashes = {
+        "src/file.js": createHash("sha256").update(inputContent).digest("hex"),
+      };
+      const currentOutputHashes = {
+        "dist/file.js": createHash("sha256").update(outputContent).digest("hex"),
+      };
+
+      const hashFile = {
+        hashSchemaVersion: "2" as const,
+        inputs: currentInputHashes,
+        outputs: currentOutputHashes,
+      };
+
+      mockedReadFile.mockResolvedValueOnce(JSON.stringify(hashFile));
+
+      // Mock input files glob
+      mockedGlob.mockResolvedValueOnce([path.join(mockConfigDir, "src/file.js")] as any);
+      // Mock output files glob
+      mockedGlob.mockResolvedValueOnce([path.join(mockConfigDir, "dist/file.js")] as any);
+
+      mockedReadFile.mockResolvedValueOnce(inputContent); // for input file
+      mockedReadFile.mockResolvedValueOnce(outputContent); // for output file
+
+      const runner = createHashRunner();
+      await runner.run();
+
+      expect(spawn).not.toHaveBeenCalled();
+      expect(mockedWriteFile).not.toHaveBeenCalled();
+    });
   });
 });

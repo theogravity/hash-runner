@@ -67,17 +67,22 @@ CLI options:
 
 #### Configuration options
 
-- `include`: An array of glob patterns specifying the files to include in the hash calculation.
-- `exclude`: An array of glob patterns specifying the files to exclude from the hash calculation.
-  * The hash file (specified in `hashFile`) is automatically excluded and does not need to be specified.
-  * The configuration file itself is automatically excluded and does not need to be specified.
-- `execOnChange`: The command to execute when changes are detected.
-  * `hash-runner` will exit with the status code of the executed command after completion.
-- `hashFile`: The path to the file where hashes are stored.
-  * It is recommended you add the `hashFile` to your `.gitignore` file.
-  * This file is automatically excluded from hash calculations to prevent circular dependencies.
-- `parallelizeComparisonsChunkSize`: Will start parallelizing the hash comparison per specified number of file entries.
-  * Default is 100 files, meaning that the hash comparison will be parallelized for every 100 files.
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `inputs` | object | Yes | Contains input file configuration |
+| `inputs.includes` | string[] | Yes | Array of glob patterns specifying files to include in hash calculation |
+| `inputs.excludes` | string[] | No | Array of glob patterns specifying files to exclude from hash calculation |
+| `outputs` | object | No | Contains output file configuration for tracking build artifacts |
+| `outputs.includes` | string[] | Yes* | Array of glob patterns specifying output files to track (*required if `outputs` is defined) |
+| `outputs.excludes` | string[] | No | Array of glob patterns specifying output files to exclude from tracking |
+| `execOnChange` | string | Yes | Command to execute when changes are detected |
+| `hashFile` | string | Yes | Path to file where hashes are stored (recommend adding to `.gitignore`) |
+| `parallelizeComparisonsChunkSize` | number | No | Number of files per chunk for parallelizing hash comparison (default: 100) |
+
+**Notes:**
+- The hash file and configuration file are automatically excluded from hash calculations
+- If outputs are configured but missing or changed, the cache is considered stale and the command executes
+- `hash-runner` exits with the status code of the executed command
 
 #### Examples
 
@@ -98,8 +103,14 @@ Example configuration file (`.hash-runnerrc.json`):
 
 ```json
 {
-  "include": ["src/**/*.ts"],
-  "exclude": ["dist/**"],
+  "inputs": {
+    "includes": ["src/**/*.ts"],
+    "excludes": ["dist/**"]
+  },
+  "outputs": {
+    "includes": ["dist/**/*.js"],
+    "excludes": ["dist/**/*.map"]
+  },
   "execOnChange": "npm run build:files",
   "hashFile": ".hashes.json"
 }
@@ -109,14 +120,38 @@ Example configuration file (`.hash-runnerrc.json`):
 
 ```js
 module.exports = {
-  include: ['src/**/*.ts'],
-  exclude: ['dist/**'],
+  inputs: {
+    includes: ['src/**/*.ts'],
+    excludes: ['dist/**']
+  },
+  outputs: {
+    includes: ['dist/**/*.js'],
+    excludes: ['dist/**/*.map']
+  },
   execOnChange: 'npm run build:files',
   hashFile: '.hashes.json'
 };
 ```
 
+### Basic Configuration (Inputs Only)
+
+If you only need to track input files (similar to v3 behavior):
+
+```json
+{
+  "inputs": {
+    "includes": ["src/**/*.ts"]
+  },
+  "execOnChange": "npm run build:files",
+  "hashFile": ".hashes.json"
+}
+```
+
 `npm run build` will only run `tsc` when changes are detected in files in the `src` directory.
+
+## Migration from v3 to v4
+
+If you're upgrading from hash-runner v3, you'll need to manually update your configuration to the v4 format. For detailed migration instructions, see [MIGRATING.md](./MIGRATING.md).
 
 ### CI Mode
 

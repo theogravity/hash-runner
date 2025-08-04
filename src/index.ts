@@ -9,11 +9,28 @@ import { type LilconfigResult, lilconfig } from "lilconfig";
 const debug = debugLib("hash-runner");
 
 export interface HashRunnerConfigFile {
-  include?: string[];
-  exclude?: string[];
+  inputs: {
+    includes: string[];
+    excludes?: string[];
+  };
+  outputs?: {
+    includes: string[];
+    excludes?: string[];
+  };
   execOnChange: string;
   hashFile: string;
   parallelizeComparisonsChunkSize?: number;
+}
+
+// Hash file structures
+export interface HashFileV1 {
+  [filepath: string]: string;
+}
+
+export interface HashFileV2 {
+  hashSchemaVersion: "2";
+  inputs: Record<string, string>;
+  outputs?: Record<string, string>;
 }
 
 export interface HashRunnerOptions {
@@ -100,20 +117,20 @@ export class HashRunner {
   }
 
   /**
-   * Gets the hashes of files included in the configuration.
+   * Gets the hashes of input files based on the configuration.
    * @param {string} configDir - Directory containing the configuration.
    * @param {HashRunnerConfigFile} config - Configuration object.
    * @param {string} configFilePath - Path to the configuration file to exclude from processing.
    * @returns {Promise<Record<string, string>>} - A record of file paths and their corresponding hashes.
    * @private
    */
-  private async getHashedFiles(
+  private async getInputHashes(
     configDir: string,
     config: HashRunnerConfigFile,
     configFilePath: string,
   ): Promise<Record<string, string>> {
-    const includePatterns = config.include || [];
-    const excludePatterns = [...(config.exclude || [])];
+    const includePatterns = config.inputs.includes;
+    const excludePatterns = [...(config.inputs.excludes || [])];
 
     // Auto-exclude the hash file from the config using glob pattern
     excludePatterns.push(config.hashFile);
@@ -143,6 +160,111 @@ export class HashRunner {
   }
 
   /**
+   * Gets the hashes of output files based on the configuration.
+   * @param {string} configDir - Directory containing the configuration.
+   * @param {HashRunnerConfigFile} config - Configuration object.
+   * @param {string} configFilePath - Path to the configuration file to exclude from processing.
+   * @returns {Promise<Record<string, string> | undefined>} - A record of file paths and their corresponding hashes, or undefined if no outputs configured.
+   * @private
+   */
+  private async getOutputHashes(
+    configDir: string,
+    config: HashRunnerConfigFile,
+    configFilePath: string,
+  ): Promise<Record<string, string> | undefined> {
+    if (!config.outputs) {
+      return undefined;
+    }
+
+    const includePatterns = config.outputs.includes;
+    const excludePatterns = [...(config.outputs.excludes || [])];
+
+    // Auto-exclude the hash file from the config using glob pattern
+    excludePatterns.push(config.hashFile);
+
+    // Auto-exclude the config file using glob pattern
+    const configFileName = path.basename(configFilePath);
+    excludePatterns.push(configFileName);
+
+    try {
+      const includedFiles = await glob(includePatterns, {
+        cwd: configDir,
+        dot: true,
+        absolute: true,
+        ignore: excludePatterns,
+        nodir: true,
+      });
+
+      const fileHashes: Record<string, string> = {};
+
+      await Promise.all(
+        includedFiles.map(async (file) => {
+          const relativePath = path.relative(configDir, file);
+          fileHashes[relativePath] = await this.computeFileHash(file);
+        }),
+      );
+
+      return fileHashes;
+    } catch (error) {
+      // If we can't read output files (e.g., they don't exist), return undefined
+      // This will be treated as a cache miss
+      debug(`Could not read output files: ${error}`);
+      return undefined;
+    }
+  }
+
+  /**
+   * Checks if outputs have changed or are missing.
+   * @param {Record<string, string> | undefined} currentOutputs - Current output hashes.
+   * @param {Record<string, string> | undefined} previousOutputs - Previous output hashes.
+   * @returns {boolean} - True if outputs are missing or have changed.
+   * @private
+   */
+  private checkOutputsChanged(
+    currentOutputs?: Record<string, string>,
+    previousOutputs?: Record<string, string>,
+  ): boolean {
+    // If no outputs are configured, consider them unchanged
+    if (!currentOutputs && !previousOutputs) {
+      return false;
+    }
+
+    // If outputs are configured but missing, consider them changed
+    if (!currentOutputs && previousOutputs) {
+      debug("Output files are missing, considering cache stale");
+      return true;
+    }
+
+    // If outputs were not tracked before but are now configured, consider them changed
+    if (currentOutputs && !previousOutputs) {
+      debug("Output files are newly configured, considering cache stale");
+      return true;
+    }
+
+    // Both exist, compare them
+    if (currentOutputs && previousOutputs) {
+      const currentKeys = Object.keys(currentOutputs);
+      const previousKeys = Object.keys(previousOutputs);
+
+      // Check if number of files changed
+      if (currentKeys.length !== previousKeys.length) {
+        debug(`Output files count changed: ${previousKeys.length} vs ${currentKeys.length}`);
+        return true;
+      }
+
+      // Check if any hashes changed
+      for (const file of currentKeys) {
+        if (currentOutputs[file] !== previousOutputs[file]) {
+          debug(`Output file hash changed: ${file}`);
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Loads the configuration from a file.
    * @returns {Promise<{ config: HashRunnerConfigFile; configDir: string; configFilePath: string }>} - The configuration, its directory, and file path.
    * @throws {Error} - Throws an error if the config file is not found or is empty.
@@ -162,44 +284,105 @@ export class HashRunner {
       throw new Error("[hash-runner] Config file not found or is empty");
     }
 
-    return { config: result.config, configDir: path.dirname(result.filepath), configFilePath: result.filepath };
+    const config = result.config;
+
+    // Check if it's a v3 configuration
+    if ("include" in config || "exclude" in config) {
+      throw new Error(
+        "[hash-runner] Detected v3 configuration format. Please see MIGRATING.md for migration instructions.",
+      );
+    }
+
+    // Validate v4 configuration
+    if (!config.inputs || !config.inputs.includes) {
+      throw new Error("[hash-runner] Configuration must have inputs.includes array");
+    }
+
+    return { config, configDir: path.dirname(result.filepath), configFilePath: result.filepath };
   }
 
   /**
    * Reads the hash file containing previous file hashes.
    * @param {string} hashFilePath - Path to the hash file.
-   * @returns {Promise<Record<string, string> | null>} - The previous hashes or null if file not found.
+   * @returns {Promise<HashFileV2 | null>} - The previous hashes or null if file not found.
    * @private
    */
-  private async readHashFile(hashFilePath: string): Promise<Record<string, string> | null> {
+  private async readHashFile(hashFilePath: string): Promise<HashFileV2 | null> {
     try {
       const content = await fs.readFile(hashFilePath, "utf8");
-      return JSON.parse(content);
+      const parsed = JSON.parse(content);
+      return this.migrateHashFile(parsed);
     } catch (_e) {
       return null;
     }
   }
 
   /**
+   * Migrates a hash file from v1 to v2 format if needed.
+   * @param {HashFileV1 | HashFileV2} hashData - The hash data to migrate.
+   * @returns {HashFileV2} - The migrated hash data.
+   * @private
+   */
+  private migrateHashFile(hashData: HashFileV1 | HashFileV2): HashFileV2 {
+    // Check if it's already v2 format
+    if ("hashSchemaVersion" in hashData && hashData.hashSchemaVersion === "2") {
+      return hashData as HashFileV2;
+    }
+
+    // Migrate from v1 to v2
+    const v1Data = hashData as HashFileV1;
+    debug("Migrating hash file from v1 to v2 format");
+
+    return {
+      hashSchemaVersion: "2",
+      inputs: v1Data,
+      outputs: undefined,
+    };
+  }
+
+  /**
    * Writes the provided hash data to a file.
    * @param {string} hashFilePath - Path to the hash file.
-   * @param {Record<string, string>} hashData - The hash data to write.
+   * @param {Record<string, string>} inputHashes - The input hash data to write.
+   * @param {Record<string, string>} outputHashes - The output hash data to write.
    * @returns {Promise<void>}
    * @private
    */
-  private async writeHashFile(hashFilePath: string, hashData: Record<string, string>): Promise<void> {
-    // Create a sorted version of the hash data with alphabetized keys
-    const sortedHashData = Object.keys(hashData)
+  private async writeHashFile(
+    hashFilePath: string,
+    inputHashes: Record<string, string>,
+    outputHashes?: Record<string, string>,
+  ): Promise<void> {
+    // Create sorted versions of the hash data with alphabetized keys
+    const sortedInputHashes = Object.keys(inputHashes)
       .sort()
       .reduce(
         (sorted, key) => {
-          sorted[key] = hashData[key];
+          sorted[key] = inputHashes[key];
           return sorted;
         },
         {} as Record<string, string>,
       );
 
-    await fs.writeFile(hashFilePath, JSON.stringify(sortedHashData, null, 2));
+    const sortedOutputHashes = outputHashes
+      ? Object.keys(outputHashes)
+          .sort()
+          .reduce(
+            (sorted, key) => {
+              sorted[key] = outputHashes[key];
+              return sorted;
+            },
+            {} as Record<string, string>,
+          )
+      : undefined;
+
+    const hashFileData: HashFileV2 = {
+      hashSchemaVersion: "2",
+      inputs: sortedInputHashes,
+      outputs: sortedOutputHashes,
+    };
+
+    await fs.writeFile(hashFilePath, JSON.stringify(hashFileData, null, 2));
   }
 
   /**
@@ -280,27 +463,52 @@ export class HashRunner {
       return;
     }
 
-    const [previousHashes, currentHashes] = await Promise.all([
+    const [previousHashFile, currentInputHashes, currentOutputHashes] = await Promise.all([
       this.readHashFile(hashFilePath),
-      this.getHashedFiles(configDir, config, configFilePath),
+      this.getInputHashes(configDir, config, configFilePath),
+      this.getOutputHashes(configDir, config, configFilePath),
     ]);
 
+    const previousInputHashes = previousHashFile?.inputs || {};
+    const previousOutputHashes = previousHashFile?.outputs;
+
     debug(`Forced hash regeneration: ${!!this.options.force}`);
-    debug(`Previous hashes exist: ${!!previousHashes}`);
+    debug(`Previous hash file exists: ${!!previousHashFile}`);
     debug(
-      `Previous vs current hash length: ${Object.keys(previousHashes || {}).length} vs ${Object.keys(currentHashes).length}`,
+      `Previous vs current input hash length: ${Object.keys(previousInputHashes).length} vs ${Object.keys(currentInputHashes).length}`,
+    );
+    debug(
+      `Previous vs current output hash length: ${Object.keys(previousOutputHashes || {}).length} vs ${Object.keys(currentOutputHashes || {}).length}`,
     );
 
-    if (
-      this.options.force ||
-      !previousHashes ||
-      Object.keys(currentHashes).length !== Object.keys(previousHashes).length ||
-      (await this.checkChangesInChunks(currentHashes, previousHashes, config.parallelizeComparisonsChunkSize))
-    ) {
-      this.log(`Changes detected. Running command: "${config.execOnChange}"`);
+    // Check if we need to run the command
+    const inputsChanged =
+      Object.keys(currentInputHashes).length !== Object.keys(previousInputHashes).length ||
+      (await this.checkChangesInChunks(
+        currentInputHashes,
+        previousInputHashes,
+        config.parallelizeComparisonsChunkSize,
+      ));
+
+    const outputsChanged = this.checkOutputsChanged(currentOutputHashes, previousOutputHashes);
+
+    if (this.options.force || !previousHashFile || inputsChanged || outputsChanged) {
+      if (this.options.force) {
+        this.log("Forced execution. Running command.");
+      } else if (!previousHashFile) {
+        this.log("No previous hash file found. Running command.");
+      } else if (inputsChanged) {
+        this.log("Input changes detected. Running command.");
+      } else if (outputsChanged) {
+        this.log("Output changes detected or outputs missing. Running command.");
+      }
+
+      this.log(`Running command: "${config.execOnChange}"`);
       const code = await this.runCommand(config.execOnChange, configDir);
 
-      await this.writeHashFile(hashFilePath, currentHashes);
+      // After running the command, re-read output hashes in case they were generated/modified
+      const updatedOutputHashes = await this.getOutputHashes(configDir, config, configFilePath);
+      await this.writeHashFile(hashFilePath, currentInputHashes, updatedOutputHashes);
 
       // Exit the process with the command's exit code
       this.exitProcess(code);
