@@ -4,6 +4,10 @@
     "**/.env.*local",
     "biome.json"
   ],
+  "globalEnv": [
+    "CI",
+    "IS_TEST"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["test","lint", "^build"],

@@ -294,7 +294,7 @@ export class HashRunner {
     }
 
     // Validate v4 configuration
-    if (!config.inputs || !config.inputs.includes) {
+    if (!config.inputs?.includes) {
       throw new Error("[hash-runner] Configuration must have inputs.includes array");
     }
 

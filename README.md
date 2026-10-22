@@ -35,7 +35,7 @@ execute the underlying build command unless changes are detected.
 
 ## Installation
 
-Node.js 20 or higher is required.
+Node.js 22.12.0 or higher is required.
 
 To install `hash-runner`, use npm:
 
