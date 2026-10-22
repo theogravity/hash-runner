@@ -38,8 +38,8 @@
     "syncpack:fix": "syncpack fix",
     "syncpack:format": "syncpack format",
     "syncpack:lint": "syncpack lint",
-    "test": "IS_TEST=true vitest run",
-    "test:watch": "IS_TEST=true vitest",
+    "test": "IS_TEST=true CI= vitest run",
+    "test:watch": "IS_TEST=true CI= vitest",
     "typecheck": "tsc --noEmit",
     "version-packages": "changeset version"
   },
