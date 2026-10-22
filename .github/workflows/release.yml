@@ -11,21 +11,32 @@ jobs:
   release:
     name: Releasing
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write # the action opens/merges version PRs and pushes release tags
+      id-token: write # npm exchanges the OIDC token for publish rights (trusted publishing)
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
-        with:
-          run_install: |
-            - recursive: true
-              args: [--frozen-lockfile]
+      - uses: pnpm/action-setup@v6
 
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          # Node 24 carries npm >= 11.5.1, the first version that can do OIDC trusted publishing.
+          node-version: 24
           cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare npm for OIDC
+        # npm must find no auth it could prefer over the OIDC exchange;
+        # the blanked tokens below are belt-and-braces for the same reason.
+        run: |
+          npm --version
+          rm -f "$HOME/.npmrc"
 
       - name: Build workspace packages
         run: pnpm run build
@@ -34,15 +45,16 @@ jobs:
         run: pnpm run typecheck
 
       - name: Run linting
-        run: pnpm run lint
+        run: pnpm run lint:check
 
       - name: Create Release Pull Request / Publish Packages
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
-          publish: pnpm run release
-          version: pnpm run version-packages
-          commit: 'chore: release package(s)'
-          title: 'chore: release package(s)'
+          version-script: pnpm run version-packages
+          publish-script: pnpm run release
+          commit-message: 'chore: release package(s)'
+          pr-title: 'chore: release package(s)'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ''
+          NODE_AUTH_TOKEN: ''

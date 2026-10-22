@@ -38,7 +38,6 @@ export interface HashRunnerOptions {
   silent?: boolean;
 }
 
-const CI = process.env.CI === "true";
 const COMPARISON_CHUNK_SIZE = 100;
 
 /**
@@ -294,7 +293,7 @@ export class HashRunner {
     }
 
     // Validate v4 configuration
-    if (!config.inputs || !config.inputs.includes) {
+    if (!config.inputs?.includes) {
       throw new Error("[hash-runner] Configuration must have inputs.includes array");
     }
 
@@ -456,7 +455,7 @@ export class HashRunner {
     const { config, configDir, configFilePath } = await this.loadConfig();
     const hashFilePath = path.join(configDir, config.hashFile);
 
-    if (CI) {
+    if (process.env.CI === "true") {
       this.log("CI environment detected. Bypassing hash check.");
       const code = await this.runCommand(config.execOnChange, configDir);
       this.exitProcess(code);

@@ -31,48 +31,50 @@
     "debug": "ts-node-dev --inspect -- src/index.ts",
     "debug:break": "ts-node-dev --inspect-brk -- src/index.ts",
     "lint": "biome check --write --unsafe src",
+    "lint:check": "biome check src",
+    "lint:staged": "biome check --staged --write --unsafe --no-errors-on-unmatched src",
     "release": "changeset publish",
     "syncpack:update": "syncpack update",
-    "syncpack:fix": "syncpack fix-mismatches",
+    "syncpack:fix": "syncpack fix",
     "syncpack:format": "syncpack format",
     "syncpack:lint": "syncpack lint",
-    "test": "IS_TEST=true vitest run",
-    "test:watch": "IS_TEST=true vitest",
+    "test": "IS_TEST=true CI= vitest run",
+    "test:watch": "IS_TEST=true CI= vitest",
     "typecheck": "tsc --noEmit",
     "version-packages": "changeset version"
   },
   "dependencies": {
-    "commander": "14.0.0",
-    "debug": "4.4.1",
-    "glob": "11.0.3",
-    "lilconfig": "3.1.3"
+    "commander": "15.0.0",
+    "debug": "4.4.3",
+    "glob": "13.0.6",
+    "lilconfig": "3.1.4"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.1.2",
-    "@changesets/changelog-github": "0.5.1",
-    "@changesets/cli": "2.29.5",
-    "@commitlint/cli": "19.8.1",
-    "@commitlint/config-conventional": "19.8.1",
-    "@types/node": "24.1.0",
-    "lefthook": "1.12.2",
-    "syncpack": "13.0.4",
-    "turbo": "2.5.5",
-    "typescript": "5.8.3",
-    "vitest": "3.2.4"
+    "@biomejs/biome": "2.5.15",
+    "@changesets/changelog-github": "1.0.1",
+    "@changesets/cli": "3.0.3",
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
+    "@types/node": "26.6.5",
+    "lefthook": "2.2.2",
+    "syncpack": "15.3.3",
+    "turbo": "2.11.10",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
   },
   "bin": {
     "hash-runner": "dist/cjs/bin/hash-runner.js"
   },
   "bugs": "https://github.com/theogravity/hash-runner/issues",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12.0"
   },
   "files": [
     "dist"
   ],
   "homepage": "https://github.com/theogravity/hash-runner",
   "license": "MIT",
-  "packageManager": "pnpm@10.12.4",
+  "packageManager": "pnpm@12.14.0",
   "publishConfig": {
     "access": "public"
   },

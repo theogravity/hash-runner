@@ -2,25 +2,25 @@ pre-commit:
   parallel: true
   commands:
     "lint and format staged files":
-      run: turbo lint:staged
+      run: pnpm run lint:staged
       stage_fixed: true
     "check package.json files":
-      run: pnpm run syncpack:format && pnpm run lint:packages
+      run: pnpm run syncpack:format && pnpm run syncpack:lint
       stage_fixed: true
     "[repo] verify types":
-      run: turbo verify-types
+      run: pnpm run typecheck
       tags:
         - types
 
 pre-push:
   parallel: true
   commands:
-    "[repo] lint and format files":
-      run: turbo lint
+    "[repo] check files lint cleanly":
+      run: pnpm run lint:check
       tags:
         - lint
 
 commit-msg:
   commands:
     "lint commit message":
-      run: pnpm run commitlint --edit {1}
+      run: pnpm exec commitlint --edit {1}

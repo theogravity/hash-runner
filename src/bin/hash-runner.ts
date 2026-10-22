@@ -5,9 +5,12 @@ import { HashRunner } from "../index";
 
 const program = new Command();
 
-program.option("-c, --config <path>", "specify the path to the configuration file").parse(process.argv);
-program.option("-f, --force", "Force hash-regeneration and execute").parse(process.argv);
-program.option("-s, --silent", "Suppress log output").parse(process.argv);
+program
+  .name("hash-runner")
+  .option("-c, --config <path>", "specify the path to the configuration file")
+  .option("-f, --force", "Force hash-regeneration and execute")
+  .option("-s, --silent", "Suppress log output")
+  .parse(process.argv);
 
 const options = program.opts();
 const configPath = options.config;
